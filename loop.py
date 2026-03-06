@@ -8,15 +8,15 @@ REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
 AGENT_ROOT = os.path.realpath(os.getenv("AGENT_ROOT", os.getcwd()))
 ALLOWED_MODELS = {
-    "flash": "gemini-1.5-flash",  # Update to standard names if needed, moderator handles inference
-    "pro": "gemini-1.5-pro",
+    "flash": "gemini-3-flash-preview",
+    "pro": "gemini-3.1-pro-preview",
 }
 
 # 1. API Configuration
 # Initialize the NEW google-genai client
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY", "dummy_key"),
-    http_options={'api_base_url': os.getenv("GEMINI_API_BASE_URL", "http://moderator:8000")}
+    http_options={'base_url': os.getenv("GEMINI_API_BASE_URL", "http://moderator:8000")}
 )
 
 # 2. Tool Definitions
@@ -134,20 +134,22 @@ def main():
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False)
     )
 
-    # Initialize history to manage context better
-    history = []
+    # Initialize chat to manage context better
     loop_count = 0
+    chat = client.chats.create(
+        model=active_model,
+        config=config
+    )
     
     while True:
         loop_count += 1
         print(f"\n--- Cognitive Cycle {loop_count} ---")
         
-        # Internal prompt; we only send this once if we want to minimize bloat, 
-        # or we can send it as a user message and keep history.
-        # To avoid bloat, we'll keep only the last N turns of history if it gets too long.
-        if len(history) > 20:
-             history = history[-10:] # Keep the last 10 turns (5 user/5 model)
-
+        # We can dynamically adjust history length if it gets too long
+        # The genai SDK chat object manages history automatically, 
+        # but for safety against context limits, we might truncate in the future.
+        # For now, let's just use the chat object directly.
+        
         prompt = (
             "Status Check: Analyze your current state and dev log. Take the next logical step. "
             "If you've completed a major task, summarize it in your log. "
@@ -156,11 +158,7 @@ def main():
         
         try:
             print("AGENT: Thinking...")
-            response = client.models.generate_content(
-                model=active_model,
-                contents=prompt,
-                config=config
-            )
+            response = chat.send_message(prompt)
             
             # Print thoughts (text parts)
             thought = "".join([part.text for part in response.candidates[0].content.parts if part.text])
