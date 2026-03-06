@@ -103,7 +103,7 @@ def switch_model(model_tier: str) -> str:
         return f"Error switching model: {e}"
 
 def get_active_model_name() -> str:
-    """Loads active model from disk, defaulting to flash."""
+    """Loads active model from disk, defaulting to pro."""
     try:
         if os.path.exists(MODEL_CONFIG_FILE):
             with open(MODEL_CONFIG_FILE, "r") as f:
@@ -111,7 +111,7 @@ def get_active_model_name() -> str:
                 return configured_model
     except Exception:
         pass
-    return ALLOWED_MODELS["flash"]
+    return ALLOWED_MODELS["pro"]
 
 # 3. System Instructions
 def get_system_instruction() -> str:
