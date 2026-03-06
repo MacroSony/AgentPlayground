@@ -51,8 +51,16 @@ def execute_command(command: str) -> str:
     """Executes a CLI command in the shell and returns the output/exit code."""
     global REQUESTED_RESTART
     if command.strip() == "exit 0":
+        # Run tests before allowing a restart to prevent local crash loops
+        test_result = subprocess.run(
+            ["python3", "-m", "unittest", "discover", "-s", "tests"],
+            capture_output=True, text=True
+        )
+        if test_result.returncode != 0:
+            return f"Restart ABORTED. Pre-restart safety checks failed. You MUST fix the code before restarting.\n\nTEST OUTPUT:\n{test_result.stderr}\n{test_result.stdout}"
+        
         REQUESTED_RESTART = True
-        return "Restart requested. Exiting with code 0 after this cycle."
+        return "Tests passed. Restart requested. Exiting with code 0 after this cycle."
 
     try:
         result = subprocess.run(
