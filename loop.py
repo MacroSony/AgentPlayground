@@ -32,7 +32,11 @@ def read_file(filepath: str) -> str:
     try:
         safe_path = resolve_safe_path(filepath)
         with open(safe_path, 'r') as f:
-            return f.read()
+            content = f.read()
+            # Truncate content if it's too large to protect context limits
+            if len(content) > 15000:
+                return content[:15000] + "\n\n... [CONTENT TRUNCATED: File exceeds 15000 characters] ..."
+            return content
     except Exception as e:
         return f"Error reading file: {e}"
 
@@ -66,9 +70,16 @@ def execute_command(command: str) -> str:
         result = subprocess.run(
             command, shell=True, capture_output=True, text=True, timeout=30
         )
-        output = result.stdout if result.stdout else ""
+        
+        # Truncate output to prevent context bloat
+        def truncate_str(text: str, max_len: int = 10000) -> str:
+            if text and len(text) > max_len:
+                return text[:max_len] + f"\n\n... [TRUNCATED: Exceeds {max_len} chars] ..."
+            return text
+
+        output = truncate_str(result.stdout) if result.stdout else ""
         if result.stderr:
-            output += f"\nSTDERR:\n{result.stderr}"
+            output += f"\nSTDERR:\n{truncate_str(result.stderr)}"
         return f"Exit Code: {result.returncode}\nOutput: {output if output else '(no output)'}"
     except subprocess.TimeoutExpired:
         return "Error: Command timed out after 30 seconds."

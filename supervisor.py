@@ -2,8 +2,10 @@ import subprocess
 import time
 import sys
 import os
+import shutil
 
 AGENT_SCRIPT = "loop.py"
+BACKUP_SCRIPT = ".backup_loop.py"
 CRASH_LOG = "crash_report.txt"
 
 def main():
@@ -13,6 +15,10 @@ def main():
     if not os.path.exists(AGENT_SCRIPT):
         with open(AGENT_SCRIPT, "w") as f:
             f.write("print('Hello World. I am alive.')\n")
+            
+    # Create initial backup if it doesn't exist
+    if not os.path.exists(BACKUP_SCRIPT) and os.path.exists(AGENT_SCRIPT):
+        shutil.copy2(AGENT_SCRIPT, BACKUP_SCRIPT)
 
     while True:
         print(f"\n--- SYSTEM: Booting {AGENT_SCRIPT} ---")
@@ -41,11 +47,21 @@ def main():
                 print(f"SYSTEM: Crash Traceback:\n{error_content}")
             
             print("SYSTEM: The traceback is saved to 'crash_report.txt'.")
+            
+            # Rollback logic
+            if os.path.exists(BACKUP_SCRIPT):
+                print(f"SYSTEM: Rolling back {AGENT_SCRIPT} to last known good state...")
+                shutil.copy2(BACKUP_SCRIPT, AGENT_SCRIPT)
+            
             print("SYSTEM: Rebooting in 10 seconds to prevent rapid crash loops...")
             time.sleep(10)
             
         else:
             print("\nSYSTEM: Agent exited cleanly (Code 0).")
+            print("SYSTEM: Backing up stable state...")
+            if os.path.exists(AGENT_SCRIPT):
+                shutil.copy2(AGENT_SCRIPT, BACKUP_SCRIPT)
+                
             print("SYSTEM: Rebooting in 2 seconds to apply any self-modifications...")
             time.sleep(2)
 
