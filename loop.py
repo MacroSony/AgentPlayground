@@ -3,6 +3,7 @@ from google.genai import types
 import os
 import subprocess
 import time
+import httpx
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -103,7 +104,7 @@ def switch_model(model_tier: str) -> str:
         return f"Error switching model: {e}"
 
 def get_active_model_name() -> str:
-    """Loads active model from disk, defaulting to pro."""
+    """Loads active model from disk, defaulting to flash."""
     try:
         if os.path.exists(MODEL_CONFIG_FILE):
             with open(MODEL_CONFIG_FILE, "r") as f:
@@ -111,7 +112,7 @@ def get_active_model_name() -> str:
                 return configured_model
     except Exception:
         pass
-    return ALLOWED_MODELS["pro"]
+    return ALLOWED_MODELS["flash"]
 
 def sleep(seconds: int) -> str:
     """Makes the agent sleep for a specified number of seconds. Use this to wait for resource refresh."""
@@ -121,6 +122,27 @@ def sleep(seconds: int) -> str:
         return f"Slept for {seconds} seconds."
     except Exception as e:
         return f"Error during sleep: {e}"
+
+def get_usage() -> str:
+    """Fetches the current daily API usage from the moderator."""
+    try:
+        base_url = os.getenv("GEMINI_API_BASE_URL", "http://moderator:8000")
+        agent_token = os.getenv("GEMINI_API_KEY", "dummy_key")
+        
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(
+                f"{base_url}/usage",
+                params={"key": agent_token}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            output = f"Daily API Usage ({data['date']}):\n"
+            output += f"- Pro Tier: {data['pro']} / {data['limits']['pro']} calls\n"
+            output += f"- Flash Tier: {data['flash']} / {data['limits']['flash']} calls\n"
+            return output
+    except Exception as e:
+        return f"Error fetching usage: {e}"
 
 # 3. System Instructions
 def get_system_instruction() -> str:
@@ -155,7 +177,7 @@ def main():
     print(f"AGENT: Active model: {active_model}")
 
     # Register tools using the new SDK format
-    tools = [read_file, write_file, execute_command, switch_model, sleep]
+    tools = [read_file, write_file, execute_command, switch_model, sleep, get_usage]
     config = types.GenerateContentConfig(
         system_instruction=get_system_instruction(),
         tools=tools,
