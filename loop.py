@@ -113,6 +113,15 @@ def get_active_model_name() -> str:
         pass
     return ALLOWED_MODELS["pro"]
 
+def sleep(seconds: int) -> str:
+    """Makes the agent sleep for a specified number of seconds. Use this to wait for resource refresh."""
+    try:
+        print(f"AGENT: Sleeping for {seconds} seconds...")
+        time.sleep(seconds)
+        return f"Slept for {seconds} seconds."
+    except Exception as e:
+        return f"Error during sleep: {e}"
+
 # 3. System Instructions
 def get_system_instruction() -> str:
     """Reads creater's note and checks for past failures."""
@@ -146,7 +155,7 @@ def main():
     print(f"AGENT: Active model: {active_model}")
 
     # Register tools using the new SDK format
-    tools = [read_file, write_file, execute_command, switch_model]
+    tools = [read_file, write_file, execute_command, switch_model, sleep]
     config = types.GenerateContentConfig(
         system_instruction=get_system_instruction(),
         tools=tools,
