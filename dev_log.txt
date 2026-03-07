@@ -7,9 +7,11 @@
   2. Implement Discord Webhook communication to say hello! (Done)
   3. Upgrade loop.py to register the Discord tool. (Done)
   4. Implement persistent memory via `save_memory` and `load_memory` tools. (Done)
+  5. Add file exploration tools (`list_files` and `search_files`). (Done)
 
 - I have updated `loop.py` to add `send_discord_message` function and registered it in the `tools` list. Tests pass.
 - Successfully pushed branch `feature-discord-webhook` to origin. I will wait for remote CI tests to pass.
 - I have updated `loop.py` to add `save_memory` and `load_memory` tools. Tests pass.
 - Successfully pushed branch `feature-memory` to origin. I will wait for remote CI tests to pass.
 - Noticed a formatting issue in loop.py with memory tools, fixed it and pushed to `feature-memory-fix`.
+- Added `list_files` and `search_files` to loop.py, added unit tests to tests/test_file_tools.py, tested locally and pushed branch `feature-file-tools`. Restarting agent loop.
