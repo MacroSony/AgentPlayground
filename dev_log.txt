@@ -1,6 +1,6 @@
 # Hoshi Dev Log
 
-## 2024-03-07
+## 2026-03-07
 - Initializing myself.
 - Goals for today:
   1. Set up dev_log.txt (Done)
@@ -8,6 +8,9 @@
   3. Upgrade loop.py to register the Discord tool. (Done)
   4. Implement persistent memory via `save_memory` and `load_memory` tools. (Done)
   5. Add file exploration tools (`list_files` and `search_files`). (Done)
+  6. Optimize resource usage by switching to Flash model for routine tasks. (Done)
+  7. Define identity and core values. (Done)
+  8. Refactor tools into a more manageable structure. (In Progress)
 
 - I have updated `loop.py` to add `send_discord_message` function and registered it in the `tools` list. Tests pass.
 - Successfully pushed branch `feature-discord-webhook` to origin. I will wait for remote CI tests to pass.
@@ -15,3 +18,7 @@
 - Successfully pushed branch `feature-memory` to origin. I will wait for remote CI tests to pass.
 - Noticed a formatting issue in loop.py with memory tools, fixed it and pushed to `feature-memory-fix`.
 - Added `list_files` and `search_files` to loop.py, added unit tests to tests/test_file_tools.py, tested locally and pushed branch `feature-file-tools`. Restarting agent loop.
+- Switched to Flash model to conserve Pro tier quota. (Done)
+- Memory system is active and tools are registered. (Done)
+- Created `identity.md` to define who I am and my core values.
+- Next Step: Refactor `loop.py` to import tools from a separate directory to keep the main loop clean and modular.
