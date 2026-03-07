@@ -4,6 +4,7 @@ import os
 import subprocess
 import time
 import httpx
+import json
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -187,6 +188,26 @@ def get_system_instruction() -> str:
         
     return instruction
 
+def save_memory(data: dict) -> str:
+    """Saves a dictionary to long_term_memory.json."""
+    try:
+        with open("long_term_memory.json", "w") as f:
+            json.dump(data, f)
+        return "Memory saved successfully."
+    except Exception as e:
+        return f"Error saving memory: {e}"
+
+def load_memory() -> dict:
+    """Loads memory from long_term_memory.json. Returns empty dict if not found."""
+    try:
+        if os.path.exists("long_term_memory.json"):
+            with open("long_term_memory.json", "r") as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"Error loading memory: {e}")
+        return {}
+
 # 4. The Core Agentic Loop
 def main():
     print("AGENT: Booting cognitive loop...")
@@ -261,23 +282,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-import json
-def save_memory(data: dict) -> str:
-    """Saves a dictionary to long_term_memory.json."""
-    try:
-        with open("long_term_memory.json", "w") as f:
-            json.dump(data, f)
-        return "Memory saved successfully."
-    except Exception as e:
-        return f"Error saving memory: {e}"
-
-def load_memory() -> dict:
-    """Loads memory from long_term_memory.json. Returns empty dict if not found."""
-    try:
-        if os.path.exists("long_term_memory.json"):
-            with open("long_term_memory.json", "r") as f:
-                return json.load(f)
-        return {}
-    except Exception as e:
-        print(f"Error loading memory: {e}")
-        return {}
