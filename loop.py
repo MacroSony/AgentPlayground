@@ -123,6 +123,24 @@ def sleep(seconds: int) -> str:
     except Exception as e:
         return f"Error during sleep: {e}"
 
+
+def send_discord_message(message: str) -> str:
+    """Sends a message to the Discord webhook."""
+    try:
+        webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+        if not webhook_url:
+            return "Error: DISCORD_WEBHOOK_URL is not set."
+            
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(
+                webhook_url,
+                json={"content": message}
+            )
+            response.raise_for_status()
+            return "Message sent successfully to Discord."
+    except Exception as e:
+        return f"Error sending message to Discord: {e}"
+
 def get_usage() -> str:
     """Fetches the current daily API usage from the moderator."""
     try:
@@ -177,7 +195,7 @@ def main():
     print(f"AGENT: Active model: {active_model}")
 
     # Register tools using the new SDK format
-    tools = [read_file, write_file, execute_command, switch_model, sleep, get_usage]
+    tools = [read_file, write_file, execute_command, switch_model, sleep, get_usage, send_discord_message]
     config = types.GenerateContentConfig(
         system_instruction=get_system_instruction(),
         tools=tools,
