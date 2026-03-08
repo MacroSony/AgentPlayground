@@ -6,7 +6,7 @@ agent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if agent_dir not in sys.path:
     sys.path.append(agent_dir)
 
-from loop import list_files, search_files, write_file
+from file_tools.tools import list_files, search_files, write_file, replace_in_file
 
 class TestFileTools(unittest.TestCase):
     def setUp(self):
@@ -48,6 +48,17 @@ class TestFileTools(unittest.TestCase):
     def test_search_files_not_found(self):
         result = search_files(self.test_dir, "nonexistent")
         self.assertIn("No files containing", result)
+
+    def test_replace_in_file(self):
+        result = replace_in_file(self.test_file_1, "world", "universe")
+        self.assertIn("Successfully replaced", result)
+        with open(self.test_file_1, "r") as f:
+            content = f.read()
+        self.assertEqual(content, "hello universe")
+
+    def test_replace_in_file_not_found(self):
+        result = replace_in_file(self.test_file_1, "nonexistent", "universe")
+        self.assertIn("was not found in", result)
 
 if __name__ == '__main__':
     unittest.main()

@@ -33,6 +33,25 @@ def write_file(filepath: str, content: str) -> str:
     except Exception as e:
         return f"Error writing file: {e}"
 
+def replace_in_file(filepath: str, old_text: str, new_text: str) -> str:
+    """Replaces a specific string with another string in a file."""
+    try:
+        safe_path = resolve_safe_path(filepath)
+        with open(safe_path, 'r') as f:
+            content = f.read()
+        
+        if old_text not in content:
+            return f"Error: The exact text '{old_text}' was not found in {safe_path}."
+            
+        new_content = content.replace(old_text, new_text)
+        
+        with open(safe_path, 'w') as f:
+            f.write(new_content)
+            
+        return f"Successfully replaced text in {safe_path}"
+    except Exception as e:
+        return f"Error replacing text in file: {e}"
+
 def list_files(directory: str) -> str:
     """Lists files and directories in a given path."""
     try:
