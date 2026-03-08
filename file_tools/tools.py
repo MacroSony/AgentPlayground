@@ -188,3 +188,18 @@ def fetch_url(url: str) -> str:
             return text
     except Exception as e:
         return f"Error fetching URL: {e}"
+def run_python(code: str) -> str:
+    """Executes a block of Python code and returns the printed output and errors."""
+    import sys
+    import io
+    import contextlib
+    import traceback
+
+    output = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            exec(code, {})
+        return output.getvalue()
+    except Exception:
+        error_msg = traceback.format_exc()
+        return output.getvalue() + "\n" + error_msg

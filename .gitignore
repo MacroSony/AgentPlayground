@@ -2,3 +2,7 @@ creaters_note.md
 crash_report.txt
 __pycache__
 .backup_loop.py
+.venv/
+test_workspace/
+long_term_memory.json
+active_model.txt

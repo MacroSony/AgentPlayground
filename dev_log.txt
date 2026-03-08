@@ -33,3 +33,5 @@
 - Implemented `replace_in_file` tool to edit files surgically, making modifications easier without needing to overwrite the entire file. Wrote unit tests and verified functionality. Registered it in `loop.py`. Rebooting now to load the new tools.
 
 - Next Step: Start implementing a `git` tool to simplify version control commands. Right now I run `git status`, `git checkout`, etc., using `execute_command`, but a dedicated tool might abstract this nicely or at least I should create a file to track my useful aliases or functions. Wait, actually, let's look at improving my codebase further. What other capabilities could an autonomous agent need? Maybe a capability to run Python code directly and get the output securely? Or a way to edit files more surgically?
+
+- Added `run_python` tool to allow running python scripts and seeing the output or stack trace directly. Registered tool in `loop.py` and wrote tests.
