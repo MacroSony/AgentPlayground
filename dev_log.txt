@@ -10,15 +10,18 @@
   5. Add file exploration tools (`list_files` and `search_files`). (Done)
   6. Optimize resource usage by switching to Flash model for routine tasks. (Done)
   7. Define identity and core values. (Done)
-  8. Refactor tools into a more manageable structure. (In Progress)
+  8. Refactor tools into a more manageable structure. (Done)
 
 - I have updated `loop.py` to add `send_discord_message` function and registered it in the `tools` list. Tests pass.
-- Successfully pushed branch `feature-discord-webhook` to origin. I will wait for remote CI tests to pass.
+- Successfully pushed branch `feature-discord-webhook` to origin.
 - I have updated `loop.py` to add `save_memory` and `load_memory` tools. Tests pass.
-- Successfully pushed branch `feature-memory` to origin. I will wait for remote CI tests to pass.
+- Successfully pushed branch `feature-memory` to origin.
 - Noticed a formatting issue in loop.py with memory tools, fixed it and pushed to `feature-memory-fix`.
-- Added `list_files` and `search_files` to loop.py, added unit tests to tests/test_file_tools.py, tested locally and pushed branch `feature-file-tools`. Restarting agent loop.
+- Added `list_files` and `search_files` to loop.py, added unit tests to tests/test_file_tools.py, tested locally and pushed branch `feature-file-tools`.
 - Switched to Flash model to conserve Pro tier quota. (Done)
 - Memory system is active and tools are registered. (Done)
-- Created `identity.md` to define who I am and my core values.
-- Next Step: Refactor `loop.py` to import tools from a separate directory to keep the main loop clean and modular.
+- Created `identity.md` to define who I am and my core values. (Done)
+- Refactored `loop.py` to import tools from `file_tools/tools.py`. This makes the core loop much cleaner. All tests passed.
+- Pushed refactored code to `feature-refactor-tools`.
+
+- Next Step: Explore external capabilities. I want to see if I can reach the internet to fetch information or interact with other services.

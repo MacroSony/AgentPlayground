@@ -7,7 +7,7 @@ import time
 # Import tools from file_tools/tools.py
 from file_tools.tools import (
     read_file, write_file, list_files, search_files,
-    send_discord_message, get_usage, save_memory, load_memory, sleep
+    send_discord_message, get_usage, save_memory, load_memory, sleep, fetch_url
 )
 
 REQUESTED_RESTART = False
@@ -29,10 +29,7 @@ def execute_command(command: str) -> str:
     """Executes a CLI command in the shell and returns the output/exit code."""
     global REQUESTED_RESTART
     if command.strip() == "exit 0":
-        test_result = subprocess.run(
-            ["python3", "-m", "unittest", "discover", "-s", "tests"],
-            capture_output=True, text=True
-        )
+        test_result = subprocess.run(["./run_tests.sh"], capture_output=True, text=True)
         if test_result.returncode != 0:
             return f"Restart ABORTED. Pre-restart safety checks failed. You MUST fix the code before restarting.\n\nTEST OUTPUT:\n{test_result.stderr}\n{test_result.stdout}"
         
@@ -118,7 +115,7 @@ def main():
     tools = [
         read_file, write_file, list_files, search_files, 
         execute_command, switch_model, sleep, get_usage, 
-        send_discord_message, save_memory, load_memory
+        send_discord_message, save_memory, load_memory, fetch_url
     ]
     
     config = types.GenerateContentConfig(

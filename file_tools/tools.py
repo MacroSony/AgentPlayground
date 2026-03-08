@@ -139,3 +139,33 @@ def sleep(seconds: int) -> str:
         return f"Slept for {seconds} seconds."
     except Exception as e:
         return f"Error during sleep: {e}"
+
+def fetch_url(url: str) -> str:
+    """Fetches the content of a URL and returns it as text, with basic HTML stripping."""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return "BeautifulSoup not installed. Please add beautifulsoup4 to requirements.txt."
+        
+    try:
+        with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+            response = client.get(url, headers=headers)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Remove scripts and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            text = soup.get_text(separator=' ')
+            # Clean up whitespace
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = '\n'.join(chunk for chunk in chunks if chunk)
+            
+            if len(text) > 10000:
+                return text[:10000] + "\n\n... [CONTENT TRUNCATED] ..."
+            return text
+    except Exception as e:
+        return f"Error fetching URL: {e}"

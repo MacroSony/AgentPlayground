@@ -7,10 +7,22 @@ import shutil
 AGENT_SCRIPT = "loop.py"
 BACKUP_SCRIPT = ".backup_loop.py"
 CRASH_LOG = "crash_report.txt"
+VENV_DIR = ".venv"
+VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python")
 
 def main():
     print("SYSTEM: Supervisor initialized. Monitoring agent process...")
     
+    # Initialize virtual environment if it doesn't exist
+    if not os.path.exists(VENV_DIR):
+        print("SYSTEM: Creating virtual environment...")
+        subprocess.run([sys.executable, "-m", "venv", VENV_DIR], check=True)
+    
+    # Install dependencies on boot
+    if os.path.exists("requirements.txt"):
+        print("SYSTEM: Installing dependencies from requirements.txt...")
+        subprocess.run([VENV_PYTHON, "-m", "pip", "install", "-r", "requirements.txt"])
+
     # Ensure a barebones loop.py exists on the very first run if you haven't written one
     if not os.path.exists(AGENT_SCRIPT):
         with open(AGENT_SCRIPT, "w") as f:
@@ -26,10 +38,10 @@ def main():
         # Open a file to capture any stderr output (like Python tracebacks)
         with open(CRASH_LOG, "w") as error_file:
             
-            # We run the agent's code. 
+            # We run the agent's code inside the virtual environment
             # -u forces unbuffered output so print() statements show up instantly in Docker logs.
             process = subprocess.Popen(
-                [sys.executable, "-u", AGENT_SCRIPT], 
+                [VENV_PYTHON, "-u", AGENT_SCRIPT], 
                 stdout=sys.stdout,  # Stream normal thoughts/prints directly to console
                 stderr=error_file   # Route errors to the log file
             )
@@ -61,6 +73,11 @@ def main():
             print("SYSTEM: Backing up stable state...")
             if os.path.exists(AGENT_SCRIPT):
                 shutil.copy2(AGENT_SCRIPT, BACKUP_SCRIPT)
+                
+            # Check for new dependencies before rebooting
+            if os.path.exists("requirements.txt"):
+                print("SYSTEM: Checking for new dependencies...")
+                subprocess.run([VENV_PYTHON, "-m", "pip", "install", "-r", "requirements.txt"])
                 
             print("SYSTEM: Rebooting in 2 seconds to apply any self-modifications...")
             time.sleep(2)
