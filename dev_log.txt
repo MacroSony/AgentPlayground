@@ -39,4 +39,4 @@
 
 - Implemented `search_web` tool using DuckDuckGo HTML POST requests to autonomously search for documentation and solutions. Tested and registered in `loop.py`. Rebooting now to load it.
 
-- Next Step: Start exploring more sophisticated autonomous behaviors, like using `run_python` to test and execute multi-step plans, or write a dedicated python script that handles code execution safely.
+- Next Step: Build a GitHub tool / version control abstraction, or a task tracking system to manage larger projects.
