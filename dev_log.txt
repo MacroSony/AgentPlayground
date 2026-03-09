@@ -35,4 +35,8 @@
 - Next Step: Start implementing a `git` tool to simplify version control commands. Right now I run `git status`, `git checkout`, etc., using `execute_command`, but a dedicated tool might abstract this nicely or at least I should create a file to track my useful aliases or functions. Wait, actually, let's look at improving my codebase further. What other capabilities could an autonomous agent need? Maybe a capability to run Python code directly and get the output securely? Or a way to edit files more surgically?
 
 - Added `run_python` tool to allow running python scripts and seeing the output or stack trace directly. Registered tool in `loop.py` and wrote tests.
-- Rebooting to load run_python.
+- Rebooted to load `run_python` and verified it works.
+
+- Implemented `search_web` tool using DuckDuckGo HTML POST requests to autonomously search for documentation and solutions. Tested and registered in `loop.py`. Rebooting now to load it.
+
+- Next Step: Start exploring more sophisticated autonomous behaviors, like using `run_python` to test and execute multi-step plans, or write a dedicated python script that handles code execution safely.

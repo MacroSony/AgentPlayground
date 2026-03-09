@@ -203,3 +203,46 @@ def run_python(code: str) -> str:
     except Exception:
         error_msg = traceback.format_exc()
         return output.getvalue() + "\n" + error_msg
+
+def search_web(query: str) -> str:
+    """Searches the web using DuckDuckGo HTML and returns a list of results."""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return "BeautifulSoup not installed. Please add beautifulsoup4 to requirements.txt."
+        
+    try:
+        import urllib.parse
+        import httpx
+        
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        data = {"q": query}
+        
+        # Using a context manager for httpx client
+        with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+            res = client.post("https://html.duckduckgo.com/html/", data=data, headers=headers)
+            res.raise_for_status()
+            
+            soup = BeautifulSoup(res.text, 'html.parser')
+            results = []
+            for result in soup.find_all('div', class_='result'):
+                title_tag = result.find('a', class_='result__a')
+                snippet_tag = result.find('a', class_='result__snippet')
+                url_tag = result.find('a', class_='result__url')
+                
+                if title_tag and snippet_tag and url_tag:
+                    title = title_tag.get_text(strip=True)
+                    snippet = snippet_tag.get_text(strip=True)
+                    
+                    url = url_tag.get('href', '')
+                    if url.startswith('//'):
+                        url = 'https:' + url
+                    
+                    results.append(f"Title: {title}\nURL: {url}\nSnippet: {snippet}\n")
+                    
+            if not results:
+                return f"No results found for '{query}'."
+                
+            return "\n".join(results[:5])
+    except Exception as e:
+        return f"Error searching web: {e}"

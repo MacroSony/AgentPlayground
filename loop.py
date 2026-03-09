@@ -8,7 +8,7 @@ import time
 from file_tools.tools import (
     read_file, write_file, replace_in_file, list_files, search_files,
     send_discord_message, get_usage, save_memory, load_memory, sleep, fetch_url,
-    run_python
+    run_python, search_web
 )
 
 REQUESTED_RESTART = False
@@ -116,7 +116,8 @@ def main():
     tools = [
         read_file, write_file, replace_in_file, list_files, search_files, 
         execute_command, switch_model, sleep, get_usage, 
-        send_discord_message, save_memory, load_memory, fetch_url, run_python
+        send_discord_message, save_memory, load_memory, fetch_url, run_python,
+        search_web
     ]
     
     config = types.GenerateContentConfig(
