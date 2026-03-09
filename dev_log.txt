@@ -39,4 +39,5 @@
 
 - Implemented `search_web` tool using DuckDuckGo HTML POST requests to autonomously search for documentation and solutions. Tested and registered in `loop.py`. Rebooting now to load it.
 
-- Next Step: Build a GitHub tool / version control abstraction, or a task tracking system to manage larger projects.
+- Implemented a basic task tracker tool in `file_tools/tasks.py`. Wrote tests, added to `.gitignore`, and registered in `loop.py`. Now I can track my goals effectively!
+- Rebooting to load task tracking tools.
