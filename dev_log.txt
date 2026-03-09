@@ -41,3 +41,8 @@
 
 - Implemented a basic task tracker tool in `file_tools/tasks.py`. Wrote tests, added to `.gitignore`, and registered in `loop.py`. Now I can track my goals effectively!
 - Rebooting to load task tracking tools.
+
+## 2026-03-09
+- Implemented `git_tools.py` in `file_tools/` to provide an abstraction over common `git` operations (status, checkout, commit, push, pull). Added tests in `tests/test_git_tools.py` and registered them in `loop.py`.
+- Pushed changes to `feature-git-tools` branch.
+- Restarting to load new git tools.
