@@ -259,3 +259,75 @@ def search_web(query: str) -> str:
             return "\n".join(results[:5])
     except Exception as e:
         return f"Error searching web: {e}"
+
+def search_memory(query: str, top_k: int = 3) -> str:
+    """Searches long-term memory using semantic search with fastembed."""
+    try:
+        import numpy as np
+        from fastembed import TextEmbedding
+        
+        memory = load_memory()
+        if not memory or "entries" not in memory:
+            return "No memory entries found."
+            
+        entries = memory["entries"]
+        
+        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        
+        # Get query embedding
+        query_embedding = list(model.embed([query]))[0]
+        
+        # Check if all entries have embeddings
+        needs_save = False
+        embeddings = []
+        for e in entries:
+            if "embedding" in e:
+                embeddings.append(np.array(e["embedding"]))
+            else:
+                emb = list(model.embed([e["text"]]))[0]
+                e["embedding"] = emb.tolist()
+                embeddings.append(emb)
+                needs_save = True
+        
+        if needs_save:
+            save_memory(memory)
+        
+        # Compute cosine similarities
+        similarities = []
+        for emb in embeddings:
+            sim = np.dot(query_embedding, emb) / (np.linalg.norm(query_embedding) * np.linalg.norm(emb))
+            similarities.append(sim)
+            
+        # Get top K indices
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        
+        results = []
+        for i in top_indices:
+            results.append(f"[Score: {similarities[i]:.4f}] {entries[i]['text']}")
+            
+        return "\n---\n".join(results)
+    except Exception as e:
+        return f"Error searching memory: {e}"
+
+def add_memory_entry(text: str) -> str:
+    """Adds a new text entry to long-term memory and pre-calculates its embedding."""
+    try:
+        import numpy as np
+        from fastembed import TextEmbedding
+        
+        memory = load_memory()
+        if "entries" not in memory:
+            memory["entries"] = []
+            
+        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        embedding = list(model.embed([text]))[0]
+        
+        entry = {
+            "text": text,
+            "embedding": embedding.tolist()
+        }
+        memory["entries"].append(entry)
+        save_memory(memory)
+        return f"Added memory entry: {text}"
+    except Exception as e:
+        return f"Error adding memory entry: {e}"
