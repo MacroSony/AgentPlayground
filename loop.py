@@ -12,6 +12,7 @@ from file_tools.tools import (
 )
 from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
+from file_tools.ast_tools import analyze_python_file, summarize_project
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -128,7 +129,7 @@ def main():
         execute_command, switch_model, sleep, get_usage, 
         send_discord_message, save_memory, load_memory, fetch_url, run_python,
         search_web, search_memory, add_memory_entry, add_task, list_tasks, update_task_status,
-        git_status, git_checkout, git_commit, git_push, git_pull
+        git_status, git_checkout, git_commit, git_push, git_pull, analyze_python_file, summarize_project
     ]
     
     config = types.GenerateContentConfig(

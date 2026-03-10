@@ -42,7 +42,9 @@ def git_commit(message: str, add_all: bool = True) -> str:
         add_all: Whether to run 'git add .' before committing.
     """
     if add_all:
-        _run_git(["add", "."])
+        add_res = _run_git(["add", "."])
+        if "Exit Code: 0" not in add_res:
+            return f"Failed to add files:\n{add_res}"
     return _run_git(["commit", "-m", message])
 
 def git_push(branch: str = "HEAD") -> str:
