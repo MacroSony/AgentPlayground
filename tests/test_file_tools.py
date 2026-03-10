@@ -45,6 +45,17 @@ class TestFileTools(unittest.TestCase):
         self.assertNotIn("file2.txt", result)
         self.assertIn("file3.txt", result)
 
+    def test_search_files_regex(self):
+        # Search for "hello" or "foo"
+        result = search_files(self.test_dir, r"hello|foo", use_regex=True)
+        self.assertIn("file1.txt", result)
+        self.assertIn("file2.txt", result)
+        self.assertIn("file3.txt", result)
+        
+    def test_search_files_invalid_regex(self):
+        result = search_files(self.test_dir, r"(", use_regex=True)
+        self.assertIn("Error: Invalid regex pattern", result)
+
     def test_search_files_not_found(self):
         result = search_files(self.test_dir, "nonexistent")
         self.assertIn("No files containing", result)

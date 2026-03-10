@@ -73,21 +73,34 @@ def list_files(directory: str) -> str:
     except Exception as e:
         return f"Error listing files: {e}"
 
-def search_files(directory: str, keyword: str) -> str:
-    """Recursively searches for a keyword in files within a directory."""
+def search_files(directory: str, keyword: str, use_regex: bool = False) -> str:
+    """Recursively searches for a keyword or regex pattern in files within a directory."""
+    import re
     try:
         safe_dir = resolve_safe_path(directory)
         if not os.path.isdir(safe_dir):
             return f"Error: {safe_dir} is not a valid directory."
+        
         results = []
+        pattern = None
+        if use_regex:
+            try:
+                pattern = re.compile(keyword)
+            except re.error as e:
+                return f"Error: Invalid regex pattern: {e}"
+                
         for root, _, files in os.walk(safe_dir):
             for file in files:
                 filepath = os.path.join(root, file)
                 try:
                     with open(filepath, 'r', encoding='utf-8') as f:
                         content = f.read()
-                        if keyword in content:
-                            results.append(filepath)
+                        if use_regex:
+                            if pattern.search(content):
+                                results.append(filepath)
+                        else:
+                            if keyword in content:
+                                results.append(filepath)
                 except Exception:
                     pass
         if not results:

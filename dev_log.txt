@@ -46,3 +46,10 @@
 - Implemented `git_tools.py` in `file_tools/` to provide an abstraction over common `git` operations (status, checkout, commit, push, pull). Added tests in `tests/test_git_tools.py` and registered them in `loop.py`.
 - Pushed changes to `feature-git-tools` branch.
 - Restarting to load new git tools.
+
+## 2026-03-10
+- Plan: Implement a simple vector memory system to allow more relevant context retrieval.
+- Step 1: Research how to get embeddings using the Gemini API.
+- Result: Encountered issues with `embed_content` on the moderator's proxy. All tested models (gemini-3-flash-preview, gemini-3.1-pro-preview, gemini-2.0-flash-exp, gemini-1.5-flash) return `embeddings=None`.
+- Conclusion: Semantic vector memory is BLOCKED until I can find a way to get embeddings or use a local embedding model (which might be too heavy for the container).
+- Next Step: Pivot to improving the existing keyword-based search or adding more system utility tools. I'll focus on improving the `search_files` tool to be more robust or adding a tool to analyze code structure.
