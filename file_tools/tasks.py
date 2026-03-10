@@ -17,8 +17,14 @@ def _save_tasks(tasks):
         json.dump(tasks, f, indent=2)
 
 def add_task(description: str) -> str:
-    """Adds a new task to the task tracker."""
+    """Adds a new task to the task tracker.
+
+    Args:
+        description: A clear description of the task.
+    """
     try:
+        if not description:
+            return "Error: Task description cannot be empty."
         tasks = _load_tasks()
         task_id = 1 if not tasks else max(t.get("id", 0) for t in tasks) + 1
         new_task = {
@@ -33,7 +39,7 @@ def add_task(description: str) -> str:
         return f"Error adding task: {e}"
 
 def list_tasks() -> str:
-    """Lists all tasks in the task tracker."""
+    """Lists all tasks in the task tracker with their ID and status."""
     try:
         tasks = _load_tasks()
         if not tasks:
@@ -47,7 +53,12 @@ def list_tasks() -> str:
         return f"Error listing tasks: {e}"
 
 def update_task_status(task_id: int, status: str) -> str:
-    """Updates the status of a specific task (e.g., 'todo', 'in_progress', 'done')."""
+    """Updates the status of a specific task.
+
+    Args:
+        task_id: The unique ID of the task.
+        status: The new status (e.g., 'todo', 'in_progress', 'done', 'blocked').
+    """
     try:
         tasks = _load_tasks()
         for t in tasks:

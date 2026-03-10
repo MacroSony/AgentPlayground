@@ -11,9 +11,15 @@ def resolve_safe_path(filepath: str) -> str:
     raise ValueError(f"Path is outside allowed root: {filepath}")
 
 def read_file(filepath: str) -> str:
-    """Reads the content of a file."""
+    """Reads the content of a file.
+
+    Args:
+        filepath: The path to the file relative to /app/agent.
+    """
     try:
         safe_path = resolve_safe_path(filepath)
+        if not os.path.exists(safe_path):
+            return f"Error: File {filepath} not found."
         with open(safe_path, 'r') as f:
             content = f.read()
             if len(content) > 15000:
@@ -23,7 +29,12 @@ def read_file(filepath: str) -> str:
         return f"Error reading file: {e}"
 
 def write_file(filepath: str, content: str) -> str:
-    """Writes content to a file, overwriting existing content."""
+    """Writes content to a file, overwriting existing content.
+
+    Args:
+        filepath: The path to the file relative to /app/agent.
+        content: The text content to write.
+    """
     try:
         safe_path = resolve_safe_path(filepath)
         os.makedirs(os.path.dirname(safe_path), exist_ok=True)
@@ -34,8 +45,16 @@ def write_file(filepath: str, content: str) -> str:
         return f"Error writing file: {e}"
 
 def replace_in_file(filepath: str, old_text: str, new_text: str) -> str:
-    """Replaces a specific string with another string in a file."""
+    """Replaces a specific string with another string in a file.
+    
+    Args:
+        filepath: The path to the file relative to /app/agent.
+        old_text: The exact string to find in the file.
+        new_text: The string to replace it with.
+    """
     try:
+        if not old_text:
+            return "Error: old_text cannot be empty."
         safe_path = resolve_safe_path(filepath)
         with open(safe_path, 'r') as f:
             content = f.read()
@@ -53,15 +72,19 @@ def replace_in_file(filepath: str, old_text: str, new_text: str) -> str:
         return f"Error replacing text in file: {e}"
 
 def list_files(directory: str) -> str:
-    """Lists files and directories in a given path."""
+    """Lists files and directories in a given path.
+
+    Args:
+        directory: The path to the directory relative to /app/agent.
+    """
     try:
         safe_path = resolve_safe_path(directory)
         if not os.path.exists(safe_path):
-            return f"Error: Path {safe_path} does not exist."
+            return f"Error: Path {directory} does not exist."
         if not os.path.isdir(safe_path):
-            return f"Error: Path {safe_path} is not a directory."
+            return f"Error: Path {directory} is not a directory."
         items = os.listdir(safe_path)
-        output = [f"Contents of {safe_path}:"]
+        output = [f"Contents of {directory}:"]
         for item in items:
             item_path = os.path.join(safe_path, item)
             if os.path.isdir(item_path):
@@ -74,12 +97,18 @@ def list_files(directory: str) -> str:
         return f"Error listing files: {e}"
 
 def search_files(directory: str, keyword: str, use_regex: bool = False) -> str:
-    """Recursively searches for a keyword or regex pattern in files within a directory."""
+    """Recursively searches for a keyword or regex pattern in files within a directory.
+
+    Args:
+        directory: The path to the directory relative to /app/agent.
+        keyword: The string or regex pattern to search for.
+        use_regex: Whether to treat the keyword as a regex pattern.
+    """
     import re
     try:
         safe_dir = resolve_safe_path(directory)
         if not os.path.isdir(safe_dir):
-            return f"Error: {safe_dir} is not a valid directory."
+            return f"Error: {directory} is not a valid directory."
         
         results = []
         pattern = None
@@ -104,7 +133,7 @@ def search_files(directory: str, keyword: str, use_regex: bool = False) -> str:
                 except Exception:
                     pass
         if not results:
-            return f"No files containing '{keyword}' found in {safe_dir}."
+            return f"No files containing '{keyword}' found in {directory}."
         output = [f"Found '{keyword}' in the following files:"]
         for res in results:
             rel_path = os.path.relpath(res, safe_dir)
@@ -114,8 +143,14 @@ def search_files(directory: str, keyword: str, use_regex: bool = False) -> str:
         return f"Error searching files: {e}"
 
 def send_discord_message(message: str) -> str:
-    """Sends a message to the Discord webhook."""
+    """Sends a message to the Discord webhook.
+
+    Args:
+        message: The message text to send.
+    """
     try:
+        if not message:
+            return "Error: Message cannot be empty."
         webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
         if not webhook_url:
             return "Error: DISCORD_WEBHOOK_URL is not set."
@@ -143,8 +178,14 @@ def get_usage() -> str:
         return f"Error fetching usage: {e}"
 
 def save_memory(data: dict) -> str:
-    """Saves a dictionary to long_term_memory.json."""
+    """Saves a dictionary to long_term_memory.json.
+
+    Args:
+        data: The dictionary to save.
+    """
     try:
+        if not isinstance(data, dict):
+            return "Error: Memory data must be a dictionary."
         with open("long_term_memory.json", "w") as f:
             json.dump(data, f)
         return "Memory saved successfully."
@@ -163,8 +204,14 @@ def load_memory() -> dict:
         return {}
 
 def sleep(seconds: int) -> str:
-    """Makes the agent sleep for a specified number of seconds."""
+    """Makes the agent sleep for a specified number of seconds to wait for resource budget refresh.
+
+    Args:
+        seconds: Number of seconds to sleep.
+    """
     try:
+        if seconds < 0:
+            return "Error: Sleep duration cannot be negative."
         print(f"AGENT: Sleeping for {seconds} seconds...")
         import time
         time.sleep(seconds)
@@ -173,13 +220,20 @@ def sleep(seconds: int) -> str:
         return f"Error during sleep: {e}"
 
 def fetch_url(url: str) -> str:
-    """Fetches the content of a URL and returns it as text, with basic HTML stripping."""
+    """Fetches the content of a URL and returns it as text, with basic HTML stripping.
+
+    Args:
+        url: The full URL to fetch (must include http/https).
+    """
     try:
         from bs4 import BeautifulSoup
     except ImportError:
         return "BeautifulSoup not installed. Please add beautifulsoup4 to requirements.txt."
         
     try:
+        if not url.startswith(("http://", "https://")):
+            return "Error: URL must start with http:// or https://."
+            
         with httpx.Client(timeout=15.0, follow_redirects=True) as client:
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
             response = client.get(url, headers=headers)
@@ -202,11 +256,18 @@ def fetch_url(url: str) -> str:
     except Exception as e:
         return f"Error fetching URL: {e}"
 def run_python(code: str) -> str:
-    """Executes a block of Python code and returns the printed output and errors."""
+    """Executes a block of Python code and returns the printed output and errors.
+
+    Args:
+        code: The Python code to execute. Use print() to see output.
+    """
     import sys
     import io
     import contextlib
     import traceback
+
+    if not code:
+        return "Error: No code provided."
 
     output = io.StringIO()
     try:
@@ -218,13 +279,20 @@ def run_python(code: str) -> str:
         return output.getvalue() + "\n" + error_msg
 
 def search_web(query: str) -> str:
-    """Searches the web using DuckDuckGo HTML and returns a list of results."""
+    """Searches the web using DuckDuckGo HTML and returns a list of results.
+
+    Args:
+        query: The search query.
+    """
     try:
         from bs4 import BeautifulSoup
     except ImportError:
         return "BeautifulSoup not installed. Please add beautifulsoup4 to requirements.txt."
         
     try:
+        if not query:
+            return "Error: Search query cannot be empty."
+            
         import urllib.parse
         import httpx
         
@@ -261,11 +329,19 @@ def search_web(query: str) -> str:
         return f"Error searching web: {e}"
 
 def search_memory(query: str, top_k: int = 3) -> str:
-    """Searches long-term memory using semantic search with fastembed."""
+    """Searches long-term memory using semantic search with fastembed.
+
+    Args:
+        query: The semantic search query.
+        top_k: The number of top results to return.
+    """
     try:
         import numpy as np
         from fastembed import TextEmbedding
         
+        if not query:
+            return "Error: Query cannot be empty."
+            
         memory = load_memory()
         if not memory or "entries" not in memory:
             return "No memory entries found."
@@ -310,11 +386,18 @@ def search_memory(query: str, top_k: int = 3) -> str:
         return f"Error searching memory: {e}"
 
 def add_memory_entry(text: str) -> str:
-    """Adds a new text entry to long-term memory and pre-calculates its embedding."""
+    """Adds a new text entry to long-term memory and pre-calculates its embedding.
+
+    Args:
+        text: The text content to store in memory.
+    """
     try:
         import numpy as np
         from fastembed import TextEmbedding
         
+        if not text:
+            return "Error: Memory text cannot be empty."
+            
         memory = load_memory()
         if "entries" not in memory:
             memory["entries"] = []
