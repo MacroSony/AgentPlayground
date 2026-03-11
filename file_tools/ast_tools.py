@@ -19,22 +19,30 @@ def analyze_python_file(filepath: str) -> str:
         with open(safe_path, 'r') as f:
             tree = ast.parse(f.read())
             
-        # Better approach: top-level only or structured
         structured_summary = [f"Structure of {filepath}:"]
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
-                structured_summary.append(f"\nClass: {node.name}")
+                structured_summary.append(f"\n[CLASS] {node.name}")
                 doc = ast.get_docstring(node)
                 if doc:
-                    structured_summary.append(f"  Doc: {doc.splitlines()[0]}...")
+                    first_line = doc.splitlines()[0] if doc.strip() else ""
+                    structured_summary.append(f"  Doc: {first_line}")
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef):
-                        structured_summary.append(f"  Method: {item.name}")
-            elif isinstance(node, ast.FunctionDef):
-                structured_summary.append(f"\nFunction: {node.name}")
+                        args = [arg.arg for arg in item.args.args if arg.arg != 'self']
+                        structured_summary.append(f"  - [METHOD] {item.name}({', '.join(args)})")
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                kind = "[ASYNC FUNC]" if isinstance(node, ast.AsyncFunctionDef) else "[FUNC]"
+                args = [arg.arg for arg in node.args.args]
+                structured_summary.append(f"\n{kind} {node.name}({', '.join(args)})")
                 doc = ast.get_docstring(node)
                 if doc:
-                    structured_summary.append(f"  Doc: {doc.splitlines()[0]}...")
+                    first_line = doc.splitlines()[0] if doc.strip() else ""
+                    structured_summary.append(f"  Doc: {first_line}")
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        structured_summary.append(f"[CONST/VAR] {target.id}")
                     
         return "\n".join(structured_summary)
     except Exception as e:
