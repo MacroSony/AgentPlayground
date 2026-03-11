@@ -1,3 +1,4 @@
+import re
 import os
 import httpx
 import json
@@ -414,3 +415,49 @@ def add_memory_entry(text: str) -> str:
         return f"Added memory entry: {text}"
     except Exception as e:
         return f"Error adding memory entry: {e}"
+
+def patch_file(filepath: str, patches: str) -> str:
+    """Applies a series of SEARCH/REPLACE patches to a file.
+    
+    This tool is more robust than replace_in_file for multi-line changes.
+    Format for patches:
+    <<<<<<< SEARCH
+    old code
+    =======
+    new code
+    >>>>>>> REPLACE
+
+    Args:
+        filepath: The path to the file relative to /app/agent.
+        patches: One or more SEARCH/REPLACE blocks.
+    """
+    try:
+        safe_path = resolve_safe_path(filepath)
+        if not os.path.exists(safe_path):
+            return f"Error: File {filepath} not found."
+            
+        with open(safe_path, 'r') as f:
+            content = f.read()
+            
+        pattern = r"<<<<<<< SEARCH\n(.*?)\n=======\n(.*?)\n>>>>>>> REPLACE"
+        matches = re.findall(pattern, patches, re.DOTALL)
+        
+        if not matches:
+            return "Error: No valid SEARCH/REPLACE blocks found. Ensure the format is exact."
+            
+        new_content = content
+        applied_count = 0
+        
+        for search_text, replace_text in matches:
+            if search_text in new_content:
+                new_content = new_content.replace(search_text, replace_text, 1)
+                applied_count += 1
+            else:
+                return f"Error: SEARCH block not found in file:\n{search_text}"
+                
+        with open(safe_path, 'w') as f:
+            f.write(new_content)
+            
+        return f"Successfully applied {applied_count} patch(es) to {filepath}."
+    except Exception as e:
+        return f"Error applying patches: {e}"

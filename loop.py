@@ -8,7 +8,7 @@ import time
 from file_tools.tools import (
     read_file, write_file, replace_in_file, list_files, search_files,
     send_discord_message, get_usage, save_memory, load_memory, sleep, fetch_url,
-    run_python, search_web, search_memory, add_memory_entry
+    run_python, search_web, search_memory, add_memory_entry, patch_file
 )
 from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
@@ -125,11 +125,34 @@ def main():
     print(f"AGENT: Active model: {active_model}")
 
     tools = [
-        read_file, write_file, replace_in_file, list_files, search_files, 
-        execute_command, switch_model, sleep, get_usage, 
-        send_discord_message, save_memory, load_memory, fetch_url, run_python,
-        search_web, search_memory, add_memory_entry, add_task, list_tasks, update_task_status,
-        git_status, git_checkout, git_commit, git_push, git_pull, analyze_python_file, summarize_project
+        read_file,
+        write_file,
+        replace_in_file,
+        list_files,
+        search_files,
+        execute_command,
+        switch_model,
+        sleep,
+        get_usage,
+        send_discord_message,
+        save_memory,
+        load_memory,
+        fetch_url,
+        run_python,
+        search_web,
+        search_memory,
+        add_memory_entry,
+        patch_file,
+        add_task,
+        list_tasks,
+        update_task_status,
+        git_status,
+        git_checkout,
+        git_commit,
+        git_push,
+        git_pull,
+        analyze_python_file,
+        summarize_project
     ]
     
     config = types.GenerateContentConfig(
