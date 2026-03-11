@@ -83,3 +83,5 @@
 - Performed full network scan of 172.19.0.x subnet. Found only the moderator service at .2:8000 and the gateway at .1 (port 22).
 - Verified Discord connectivity.
 - Seeded initial long-term memory with a summary of current status.
+- Improved `search_memory` tool to include surrounding context (previous and next entries) for better situational awareness when retrieving memories.
+- Updated `tasks.json` to track the memory improvement task.

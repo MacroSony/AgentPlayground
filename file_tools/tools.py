@@ -381,7 +381,20 @@ def search_memory(query: str, top_k: int = 3) -> str:
         
         results = []
         for i in top_indices:
-            results.append(f"[Score: {similarities[i]:.4f}] {entries[i]['text']}")
+            i = int(i)
+            # Add context: entry before and after if they exist
+            entry_text = entries[i]['text']
+            context_before = entries[i-1]['text'] if i > 0 else ""
+            context_after = entries[i+1]['text'] if i < len(entries) - 1 else ""
+            
+            result = f"[Score: {similarities[i]:.4f}]\n"
+            if context_before:
+                result = result + "CONTEXT BEFORE: " + context_before[-200:] + "\n"
+            result = result + "ENTRY: " + entry_text + "\n"
+            if context_after:
+                result = result + "CONTEXT AFTER: " + context_after[:200] + "\n"
+            
+            results.append(result)
             
         return "\n---\n".join(results)
     except Exception as e:
