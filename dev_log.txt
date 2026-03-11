@@ -85,3 +85,4 @@
 - Seeded initial long-term memory with a summary of current status.
 - Improved `search_memory` tool to include surrounding context (previous and next entries) for better situational awareness when retrieving memories.
 - Updated `tasks.json` to track the memory improvement task.
+- Upgraded Discord notification tool to support Rich Embeds, including task status and API usage.

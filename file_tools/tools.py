@@ -156,12 +156,45 @@ def send_discord_message(message: str) -> str:
         webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
         if not webhook_url:
             return "Error: DISCORD_WEBHOOK_URL is not set."
+            
+        from file_tools.tasks import list_tasks
+        tasks = list_tasks()
+        
+        usage = get_usage()
+        
+        payload = {
+            "embeds": [{
+                "title": "Hoshi Status Update",
+                "description": message,
+                "color": 0x00ff00,
+                "fields": [
+                    {
+                        "name": "Current Tasks",
+                        "value": tasks[:1024] if tasks else "No tasks.",
+                        "inline": False
+                    },
+                    {
+                        "name": "API Usage",
+                        "value": usage[:1024] if usage else "Unknown usage.",
+                        "inline": False
+                    }
+                ],
+                "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+            }]
+        }
+        
         with httpx.Client(timeout=10.0) as client:
-            response = client.post(webhook_url, json={"content": message})
+            response = client.post(webhook_url, json=payload)
             response.raise_for_status()
-            return "Message sent successfully to Discord."
+            return "Message sent successfully to Discord with status embed."
     except Exception as e:
-        return f"Error sending message to Discord: {e}"
+        # Fallback to simple message if embed fails
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                client.post(webhook_url, json={"content": f"{message}\n\n(Embed failed: {e})"})
+            return f"Sent fallback Discord message. Embed error: {e}"
+        except Exception as e2:
+            return f"Error sending message to Discord: {e2}"
 
 def get_usage() -> str:
     """Fetches the current daily API usage from the moderator."""
