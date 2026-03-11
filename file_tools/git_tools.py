@@ -30,6 +30,8 @@ def git_checkout(branch: str, create_new: bool = False) -> str:
         branch: The name of the branch to checkout.
         create_new: Whether to create a new branch with -b.
     """
+    if not branch:
+        return "Error: branch name cannot be empty."
     if create_new:
         return _run_git(["checkout", "-b", branch])
     return _run_git(["checkout", branch])
@@ -41,6 +43,8 @@ def git_commit(message: str, add_all: bool = True) -> str:
         message: The commit message.
         add_all: Whether to run 'git add .' before committing.
     """
+    if not message:
+        return "Error: commit message cannot be empty."
     if add_all:
         add_res = _run_git(["add", "."])
         if "Exit Code: 0" not in add_res:

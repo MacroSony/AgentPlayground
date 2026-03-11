@@ -71,5 +71,48 @@ class TestFileTools(unittest.TestCase):
         result = replace_in_file(self.test_file_1, "nonexistent", "universe")
         self.assertIn("was not found in", result)
 
+    def test_replace_in_file_empty_old_text(self):
+        result = replace_in_file(self.test_file_1, "", "universe")
+        self.assertIn("Error: old_text cannot be empty.", result)
+
+    def test_write_and_read_file(self):
+        from file_tools.tools import read_file
+        test_path = "subdir/new_file.txt"
+        content = "test content"
+        write_result = write_file(test_path, content)
+        self.assertIn("Successfully wrote to", write_result)
+        
+        read_result = read_file(test_path)
+        self.assertEqual(read_result, content)
+
+    def test_read_file_not_found(self):
+        from file_tools.tools import read_file
+        result = read_file("nonexistent_file.txt")
+        self.assertIn("Error: File", result)
+        self.assertIn("not found", result)
+
+    def test_read_file_truncated(self):
+        from file_tools.tools import read_file
+        large_content = "a" * 20000
+        write_file("large.txt", large_content)
+        result = read_file("large.txt")
+        self.assertTrue(len(result) < 20000)
+        self.assertIn("CONTENT TRUNCATED", result)
+
+    def test_resolve_safe_path_boundary(self):
+        from file_tools.tools import resolve_safe_path
+        # Should work
+        path = resolve_safe_path("file1.txt")
+        self.assertTrue(path.startswith(self.test_dir))
+        
+        # Should fail
+        with self.assertRaises(ValueError):
+            resolve_safe_path("../outside.txt")
+
+    def test_list_files_invalid(self):
+        result = list_files("nonexistent_dir")
+        self.assertIn("Error: Path", result)
+        self.assertIn("does not exist", result)
+
 if __name__ == '__main__':
     unittest.main()

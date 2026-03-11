@@ -72,5 +72,25 @@ class TestGitTools(unittest.TestCase):
         git_pull("main")
         mock_run_git.assert_called_with(["pull", "origin", "main"])
 
+    @patch("file_tools.git_tools._run_git")
+    def test_git_commit_no_add(self, mock_run_git):
+        mock_run_git.return_value = "Exit Code: 0\n[main 1234abc] Test commit"
+        res = git_commit("Test commit", add_all=False)
+        self.assertEqual(mock_run_git.call_count, 1)
+        mock_run_git.assert_called_with(["commit", "-m", "Test commit"])
+        self.assertIn("1234abc", res)
+
+    @patch("file_tools.git_tools._run_git")
+    def test_git_commit_empty_message(self, mock_run_git):
+        res = git_commit("")
+        self.assertIn("Error: commit message cannot be empty", res)
+        self.assertEqual(mock_run_git.call_count, 0)
+
+    @patch("file_tools.git_tools._run_git")
+    def test_git_checkout_invalid_branch(self, mock_run_git):
+        res = git_checkout("")
+        self.assertIn("Error: branch name cannot be empty", res)
+        self.assertEqual(mock_run_git.call_count, 0)
+
 if __name__ == '__main__':
     unittest.main()
