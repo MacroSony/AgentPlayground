@@ -506,7 +506,7 @@ def journal_status() -> str:
         # Actually, let's keep it simple for now and just store the raw recent status.
         
         entry = f"Journal Entry ({time.strftime('%Y-%m-%d %H:%M:%S')}):\nTasks: {tasks}\nRecent Log: {log_context[-300:]}"
-        return add_memory_entry(entry)
+        return add_memory_entry(entry, metadata={"type": "journal", "cycle": time.strftime('%Y-%m-%d')})
     except Exception as e:
         return f"Error journaling status: {e}"
 
