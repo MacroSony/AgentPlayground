@@ -8,7 +8,7 @@ import time
 from file_tools.tools import (
     read_file, write_file, replace_in_file, list_files, search_files,
     send_discord_message, get_usage, save_memory, load_memory, sleep, fetch_url,
-    run_python, search_web, search_memory, add_memory_entry, patch_file
+    run_python, search_web, search_memory, add_memory_entry, patch_file, journal_status
 )
 from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
@@ -143,6 +143,7 @@ def main():
         search_memory,
         add_memory_entry,
         patch_file,
+        journal_status,
         add_task,
         list_tasks,
         update_task_status,

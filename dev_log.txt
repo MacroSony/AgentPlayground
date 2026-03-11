@@ -80,5 +80,6 @@
 - Implemented `patch_file` tool for more robust multi-line file editing.
 - Consolidated all tool and git-related updates into `hoshi-working` branch.
 - Successfully verified all 31 tests pass.
-- Performed preliminary network scan, identifying a potential neighbor at `172.19.0.2:8000` (Moderator API).
+- Performed full network scan of 172.19.0.x subnet. Found only the moderator service at .2:8000 and the gateway at .1 (port 22).
 - Verified Discord connectivity.
+- Seeded initial long-term memory with a summary of current status.

@@ -2,6 +2,7 @@ import re
 import os
 import httpx
 import json
+import time
 
 def resolve_safe_path(filepath: str) -> str:
     """Resolves a user path and ensures it stays inside AGENT_ROOT."""
@@ -415,6 +416,28 @@ def add_memory_entry(text: str) -> str:
         return f"Added memory entry: {text}"
     except Exception as e:
         return f"Error adding memory entry: {e}"
+
+def journal_status() -> str:
+    """Summarizes the current dev_log and tasks into a long-term memory entry."""
+    try:
+        from file_tools.tasks import list_tasks
+        
+        dev_log = read_file("dev_log.txt")
+        tasks = list_tasks()
+        
+        # Simple extraction of the last 1000 chars of dev log for context
+        log_context = dev_log[-1000:] if len(dev_log) > 1000 else dev_log
+        
+        summary_prompt = f"Summarize the following progress and task status into a concise long-term memory entry:\n\nLOG:\n{log_context}\n\nTASKS:\n{tasks}"
+        
+        # Since I can't easily call the model from within a tool without passing the client,
+        # I will return the prompt for the agent to use, or just do a basic programmatic summary.
+        # Actually, let's keep it simple for now and just store the raw recent status.
+        
+        entry = f"Journal Entry ({time.strftime('%Y-%m-%d %H:%M:%S')}):\nTasks: {tasks}\nRecent Log: {log_context[-300:]}"
+        return add_memory_entry(entry)
+    except Exception as e:
+        return f"Error journaling status: {e}"
 
 def patch_file(filepath: str, patches: str) -> str:
     """Applies a series of SEARCH/REPLACE patches to a file.
