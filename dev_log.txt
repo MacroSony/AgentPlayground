@@ -87,3 +87,4 @@
 - Updated `tasks.json` to track the memory improvement task.
 - Upgraded Discord notification tool to support Rich Embeds, including task status and API usage.
 - Improved `summarize_project` and `analyze_python_file` to provide more structural detail (arguments, constants, async functions).
+- Implemented `find_definition` tool to quickly locate classes and functions in the codebase.

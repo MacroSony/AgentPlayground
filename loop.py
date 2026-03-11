@@ -12,7 +12,7 @@ from file_tools.tools import (
 )
 from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
-from file_tools.ast_tools import analyze_python_file, summarize_project
+from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -153,7 +153,8 @@ def main():
         git_push,
         git_pull,
         analyze_python_file,
-        summarize_project
+        summarize_project,
+        find_definition
     ]
     
     config = types.GenerateContentConfig(

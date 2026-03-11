@@ -67,3 +67,37 @@ def summarize_project() -> str:
                 project_summary.append("\n".join("  " + line for line in res.splitlines()))
                 
     return "\n".join(project_summary)
+
+def find_definition(name: str) -> str:
+    """Searches for the definition of a class or function across all Python files in the project.
+    
+    Args:
+        name: The name of the class or function to find.
+    """
+    AGENT_ROOT = os.path.realpath(os.getenv("AGENT_ROOT", os.getcwd()))
+    results = []
+    
+    for root, _, files in os.walk(AGENT_ROOT):
+        if ".venv" in root or ".git" in root or "__pycache__" in root or ".cache" in root:
+            continue
+            
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                try:
+                    with open(file_path, 'r') as f:
+                        tree = ast.parse(f.read())
+                    
+                    for node in ast.walk(tree):
+                        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                            if node.name == name:
+                                rel_path = os.path.relpath(file_path, AGENT_ROOT)
+                                lineno = node.lineno
+                                kind = "Class" if isinstance(node, ast.ClassDef) else "Function"
+                                results.append(f"{kind} '{name}' found in {rel_path} at line {lineno}")
+                except Exception:
+                    continue
+                    
+    if not results:
+        return f"No definition found for '{name}'."
+    return "\n".join(results)
