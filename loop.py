@@ -8,11 +8,12 @@ import time
 from file_tools.tools import (
     read_file, write_file, replace_in_file, list_files, search_files,
     send_discord_message, get_usage, save_memory, load_memory, sleep, fetch_url,
-    run_python, search_web, search_memory, add_memory_entry, patch_file, journal_status
+    run_python, search_web, search_documentation, search_memory, add_memory_entry, patch_file, journal_status
 )
 from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
+from file_tools.rss_tools import parse_rss_feed
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -140,6 +141,7 @@ def main():
         fetch_url,
         run_python,
         search_web,
+        search_documentation,
         search_memory,
         add_memory_entry,
         patch_file,
@@ -154,7 +156,8 @@ def main():
         git_pull,
         analyze_python_file,
         summarize_project,
-        find_definition
+        find_definition,
+        parse_rss_feed
     ]
     
     config = types.GenerateContentConfig(

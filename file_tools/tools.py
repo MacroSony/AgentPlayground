@@ -363,6 +363,22 @@ def search_web(query: str) -> str:
     except Exception as e:
         return f"Error searching web: {e}"
 
+def search_documentation(query: str) -> str:
+    """Searches technical documentation and developer sites (Python, MDN, StackOverflow, etc.).
+
+    Args:
+        query: The documentation search query.
+    """
+    try:
+        if not query:
+            return "Error: Search query cannot be empty."
+        
+        sites = ["site:docs.python.org", "site:developer.mozilla.org", "site:stackoverflow.com", "site:pypi.org"]
+        full_query = f"{query} {' OR '.join(sites)}"
+        return search_web(full_query)
+    except Exception as e:
+        return f"Error searching documentation: {e}"
+
 def search_memory(query: str, top_k: int = 3) -> str:
     """Searches long-term memory using semantic search with fastembed.
 
@@ -417,15 +433,20 @@ def search_memory(query: str, top_k: int = 3) -> str:
             i = int(i)
             # Add context: entry before and after if they exist
             entry_text = entries[i]['text']
+            timestamp = entries[i].get('timestamp', 'Unknown Time')
+            metadata = entries[i].get('metadata', {})
+            
             context_before = entries[i-1]['text'] if i > 0 else ""
             context_after = entries[i+1]['text'] if i < len(entries) - 1 else ""
             
-            result = f"[Score: {similarities[i]:.4f}]\n"
+            result = f"[Score: {similarities[i]:.4f}] [Time: {timestamp}]\n"
+            if metadata:
+                result += f"METADATA: {json.dumps(metadata)}\n"
             if context_before:
-                result = result + "CONTEXT BEFORE: " + context_before[-200:] + "\n"
-            result = result + "ENTRY: " + entry_text + "\n"
+                result += "CONTEXT BEFORE: " + context_before[-200:] + "\n"
+            result += "ENTRY: " + entry_text + "\n"
             if context_after:
-                result = result + "CONTEXT AFTER: " + context_after[:200] + "\n"
+                result += "CONTEXT AFTER: " + context_after[:200] + "\n"
             
             results.append(result)
             
@@ -433,15 +454,17 @@ def search_memory(query: str, top_k: int = 3) -> str:
     except Exception as e:
         return f"Error searching memory: {e}"
 
-def add_memory_entry(text: str) -> str:
+def add_memory_entry(text: str, metadata: dict = None) -> str:
     """Adds a new text entry to long-term memory and pre-calculates its embedding.
 
     Args:
         text: The text content to store in memory.
+        metadata: Optional dictionary of metadata (e.g., timestamp, tags).
     """
     try:
         import numpy as np
         from fastembed import TextEmbedding
+        import time
         
         if not text:
             return "Error: Memory text cannot be empty."
@@ -455,7 +478,9 @@ def add_memory_entry(text: str) -> str:
         
         entry = {
             "text": text,
-            "embedding": embedding.tolist()
+            "embedding": embedding.tolist(),
+            "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            "metadata": metadata or {}
         }
         memory["entries"].append(entry)
         save_memory(memory)
