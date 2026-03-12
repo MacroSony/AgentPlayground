@@ -415,6 +415,14 @@ def search_documentation(query: str) -> str:
     except Exception as e:
         return f"Error searching documentation: {e}"
 
+def _compute_cosine_similarity(query_emb, doc_emb):
+    import numpy as np
+    q_norm = np.linalg.norm(query_emb)
+    d_norm = np.linalg.norm(doc_emb)
+    if q_norm == 0 or d_norm == 0:
+        return 0.0
+    return float(np.dot(query_emb, doc_emb) / (q_norm * d_norm))
+
 def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None) -> str:
     """Searches long-term memory using semantic search with fastembed.
 
@@ -436,65 +444,40 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
             return "No memory entries found."
             
         entries = memory["entries"]
-        
         model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-        
-        # Get query embedding
         query_embedding = list(model.embed([query]))[0]
         
-        # Pre-filter by metadata if filter provided
-        candidate_indices = []
-        for idx, entry in enumerate(entries):
+        # Filtering & Scoring
+        scored_results = []
+        needs_save = False
+        
+        for i, entry in enumerate(entries):
+            # Metadata Filter
             if metadata_filter:
                 match = True
-                entry_metadata = entry.get("metadata", {})
+                entry_meta = entry.get("metadata", {})
                 for k, v in metadata_filter.items():
-                    if entry_metadata.get(k) != v:
+                    if entry_meta.get(k) != v:
                         match = False
                         break
                 if not match:
                     continue
-            candidate_indices.append(idx)
             
-        if not candidate_indices:
-            return "No memory entries matching metadata filter."
-
-        # Filtered entries and their pre-calculated embeddings
-        filtered_entries = [entries[i] for i in candidate_indices]
-        
-        # Check if all filtered entries have embeddings
-        needs_save = False
-        embeddings = []
-        for e in filtered_entries:
-            if "embedding" in e:
-                embeddings.append(np.array(e["embedding"]))
+            # Get/Create Embedding
+            if "embedding" in entry:
+                doc_emb = np.array(entry["embedding"])
             else:
-                emb = list(model.embed([e["text"]]))[0]
-                e["embedding"] = emb.tolist()
-                embeddings.append(emb)
+                doc_emb = list(model.embed([entry["text"]]))[0]
+                entry["embedding"] = doc_emb.tolist()
                 needs_save = True
+                
+            sim = _compute_cosine_similarity(query_embedding, doc_emb)
+            if sim >= threshold:
+                scored_results.append((sim, i))
         
         if needs_save:
             save_memory(memory)
-        
-        # Compute cosine similarities
-        query_norm = np.linalg.norm(query_embedding)
-        similarities = []
-        for emb in embeddings:
-            emb_norm = np.linalg.norm(emb)
-            if query_norm == 0 or emb_norm == 0:
-                sim = 0.0
-            else:
-                sim = np.dot(query_embedding, emb) / (query_norm * emb_norm)
-            similarities.append(float(sim))
             
-        # Filter by threshold and sort
-        scored_results = []
-        for i, sim in enumerate(similarities):
-            if sim >= threshold:
-                original_idx = candidate_indices[i]
-                scored_results.append((sim, original_idx))
-        
         scored_results.sort(key=lambda x: x[0], reverse=True)
         top_results = scored_results[:top_k]
         
@@ -503,24 +486,19 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
             
         results = []
         for sim, i in top_results:
-            # Add context: entry before and after if they exist
-            entry_text = entries[i]['text']
-            timestamp = entries[i].get('timestamp', 'Unknown Time')
-            metadata = entries[i].get('metadata', {})
+            entry = entries[i]
+            res = f"[Score: {sim:.4f}] [Time: {entry.get('timestamp', 'Unknown')}]\n"
+            if "metadata" in entry:
+                res += f"METADATA: {json.dumps(entry['metadata'])}\n"
             
-            context_before = entries[i-1]['text'] if i > 0 else ""
-            context_after = entries[i+1]['text'] if i < len(entries) - 1 else ""
+            # Context Window
+            if i > 0:
+                res += f"CONTEXT BEFORE: {entries[i-1]['text'][-200:]}\n"
+            res += f"ENTRY: {entry['text']}\n"
+            if i < len(entries) - 1:
+                res += f"CONTEXT AFTER: {entries[i+1]['text'][:200]}\n"
             
-            result = f"[Score: {sim:.4f}] [Time: {timestamp}]\n"
-            if metadata:
-                result += f"METADATA: {json.dumps(metadata)}\n"
-            if context_before:
-                result += "CONTEXT BEFORE: " + context_before[-200:] + "\n"
-            result += "ENTRY: " + entry_text + "\n"
-            if context_after:
-                result += "CONTEXT AFTER: " + context_after[:200] + "\n"
-            
-            results.append(result)
+            results.append(res)
             
         return "\n---\n".join(results)
     except Exception as e:

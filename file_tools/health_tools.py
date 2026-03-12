@@ -2,65 +2,61 @@ import os
 import ast
 import re
 
+def _scan_file_health(filepath: str, rel_path: str, results: dict, markers: list):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+            lines = content.splitlines()
+            
+            # 1. Search for markers
+            for i, line in enumerate(lines):
+                for marker in markers:
+                    if marker in line:
+                        results["markers"].append(f"{rel_path}:{i+1}: {line.strip()}")
+                        
+            # 2. Structural analysis using AST
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                # Bare excepts
+                if isinstance(node, ast.ExceptHandler) and node.type is None:
+                    results["bare_excepts"].append(f"{rel_path}:{node.lineno}: Bare except block found.")
+                
+                # Unsafe calls
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                    if node.func.id in ["eval", "exec"]:
+                        results["unsafe_calls"].append(f"{rel_path}:{node.lineno}: Use of '{node.func.id}' detected.")
+                
+                # Function length
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    length = (node.end_lineno - node.lineno) if hasattr(node, "end_lineno") else 0
+                    if length > 50:
+                        results["complexity_issues"].append(f"{rel_path}:{node.lineno}: Function '{node.name}' is long ({length} lines).")
+                        
+    except Exception as e:
+        results["markers"].append(f"Error processing {rel_path}: {e}")
+
 def check_code_health(directory: str = ".") -> str:
     """Scans the codebase for TODOs, FIXMEs, and potential code quality issues.
     
     Args:
         directory: The directory to scan.
     """
-    # Resolve against CWD first to handle test runners changing AGENT_ROOT
     target_dir = os.path.realpath(directory)
-    
     markers = ["TODO", "FIXME", "BUG", "HACK"]
     results = {
         "markers": [],
         "bare_excepts": [],
-        "unsafe_calls": [], # eval, exec
-        "complexity_issues": [] # Large functions
+        "unsafe_calls": [],
+        "complexity_issues": []
     }
     
     for root, dirs, files in os.walk(target_dir):
-        # Filter out ignored directories in-place to prevent os.walk from entering them
         dirs[:] = [d for d in dirs if d not in [".git", ".venv", "__pycache__", ".cache", ".github", ".fastembed_cache"]]
-            
         for file in files:
-            if not file.endswith(".py"):
-                continue
-                
-            filepath = os.path.join(root, file)
-            rel_path = os.path.relpath(filepath, target_dir)
-            
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    lines = content.splitlines()
-                    
-                    # 1. Search for markers
-                    for i, line in enumerate(lines):
-                        for marker in markers:
-                            if marker in line:
-                                results["markers"].append(f"{rel_path}:{i+1}: {line.strip()}")
-                                
-                    # 2. Structural analysis using AST
-                    tree = ast.parse(content)
-                    for node in ast.walk(tree):
-                        # Bare excepts
-                        if isinstance(node, ast.ExceptHandler) and node.type is None:
-                            results["bare_excepts"].append(f"{rel_path}:{node.lineno}: Bare except block found.")
-                        
-                        # Unsafe calls
-                        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                            if node.func.id in ["eval", "exec"]:
-                                results["unsafe_calls"].append(f"{rel_path}:{node.lineno}: Use of '{node.func.id}' detected.")
-                        
-                        # Function length
-                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            length = (node.end_lineno - node.lineno) if hasattr(node, "end_lineno") else 0
-                            if length > 50:
-                                results["complexity_issues"].append(f"{rel_path}:{node.lineno}: Function '{node.name}' is long ({length} lines).")
-                                
-            except Exception as e:
-                results["markers"].append(f"Error processing {rel_path}: {e}")
+            if file.endswith(".py"):
+                filepath = os.path.join(root, file)
+                rel_path = os.path.relpath(filepath, target_dir)
+                _scan_file_health(filepath, rel_path, results, markers)
 
     # Format Output
     output = ["### Code Health Report ###\n"]
