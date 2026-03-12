@@ -49,7 +49,7 @@ class TestWebTools(unittest.TestCase):
             
             # Test selector no match
             result_no_match = fetch_url("http://example.com", selector=".nonexistent")
-            self.assertIn("Error: No elements found for selector '.nonexistent'.", result_no_match)
+            self.assertIn("Error: No elements for '.nonexistent'.", result_no_match)
 
             # Test remove_selectors
             result_remove = fetch_url("http://example.com", remove_selectors=[".title"])

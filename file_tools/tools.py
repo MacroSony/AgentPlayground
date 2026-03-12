@@ -144,64 +144,41 @@ def search_files(directory: str, keyword: str, use_regex: bool = False) -> str:
     except Exception as e:
         return f"Error searching files: {e}"
 
+def _get_discord_payload(message: str) -> dict:
+    from file_tools.tasks import list_tasks
+    tasks = list_tasks()
+    usage = get_usage()
+    memory = load_memory()
+    num_mem_entries = len(memory.get("entries", [])) if isinstance(memory, dict) else 0
+    test_dir = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), "tests")
+    num_tests = len([f for f in os.listdir(test_dir) if f.startswith("test_") and f.endswith(".py")]) if os.path.exists(test_dir) else 0
+
+    return {
+        "embeds": [{
+            "title": "Hoshi Status Update",
+            "description": message,
+            "color": 0x00ff00,
+            "fields": [
+                {"name": "Current Tasks", "value": tasks[:1024] if tasks else "No tasks.", "inline": False},
+                {"name": "API Usage", "value": usage[:1024] if usage else "Unknown usage.", "inline": True},
+                {"name": "System Info", "value": f"Tests: {num_tests} files\nMemory: {num_mem_entries} entries", "inline": True}
+            ],
+            "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+        }]
+    }
+
 def send_discord_message(message: str) -> str:
-    """Sends a message to the Discord webhook.
-
-    Args:
-        message: The message text to send.
-    """
+    """Sends a message to the Discord webhook."""
     try:
-        if not message:
-            return "Error: Message cannot be empty."
+        if not message: return "Error: Message cannot be empty."
         webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
-        if not webhook_url:
-            return "Error: DISCORD_WEBHOOK_URL is not set."
+        if not webhook_url: return "Error: DISCORD_WEBHOOK_URL is not set."
             
-        from file_tools.tasks import list_tasks
-        tasks = list_tasks()
-        
-        usage = get_usage()
-        
-        # Additional project metrics
-        memory = load_memory()
-        num_mem_entries = len(memory.get("entries", [])) if isinstance(memory, dict) else 0
-        
-        # Test results summary (if run_tests.sh was ever run and output saved, but let's just count files for now)
-        test_dir = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), "tests")
-        num_tests = len([f for f in os.listdir(test_dir) if f.startswith("test_") and f.endswith(".py")]) if os.path.exists(test_dir) else 0
-
-        payload = {
-            "embeds": [{
-                "title": "Hoshi Status Update",
-                "description": message,
-                "color": 0x00ff00,
-                "fields": [
-                    {
-                        "name": "Current Tasks",
-                        "value": tasks[:1024] if tasks else "No tasks.",
-                        "inline": False
-                    },
-                    {
-                        "name": "API Usage",
-                        "value": usage[:1024] if usage else "Unknown usage.",
-                        "inline": True
-                    },
-                    {
-                        "name": "System Info",
-                        "value": f"Tests: {num_tests} files\nMemory: {num_mem_entries} entries",
-                        "inline": True
-                    }
-                ],
-                "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
-            }]
-        }
-        
+        payload = _get_discord_payload(message)
         with httpx.Client(timeout=10.0) as client:
-            response = client.post(webhook_url, json=payload)
-            response.raise_for_status()
+            client.post(webhook_url, json=payload).raise_for_status()
             return "Message sent successfully to Discord with status embed."
     except Exception as e:
-        # Fallback to simple message if embed fails
         try:
             with httpx.Client(timeout=10.0) as client:
                 client.post(webhook_url, json={"content": f"{message}\n\n(Embed failed: {e})"})
@@ -267,63 +244,43 @@ def sleep(seconds: int) -> str:
     except Exception as e:
         return f"Error during sleep: {e}"
 
-def fetch_url(url: str, selector: str = None, remove_selectors: list = None) -> str:
-    """Fetches the content of a URL and returns it as text, with basic HTML stripping.
-    Can optionally extract specific elements or remove unwanted ones using CSS selectors.
+def _clean_soup(soup):
+    for script in soup(["script", "style", "header", "footer", "nav"]):
+        script.decompose()
+    text = soup.get_text(separator=' ')
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    return '\n'.join(chunk for chunk in chunks if chunk)
 
-    Args:
-        url: The full URL to fetch (must include http/https).
-        selector: Optional CSS selector to extract specific content (e.g., 'article', '.main-content').
-        remove_selectors: Optional list of CSS selectors to remove (e.g., ['.footer', '.ad-box']).
-    """
+def fetch_url(url: str, selector: str = None, remove_selectors: list = None) -> str:
+    """Fetches the content of a URL and returns it as text."""
     try:
         from bs4 import BeautifulSoup
-    except ImportError:
-        return "BeautifulSoup not installed. Please add beautifulsoup4 to requirements.txt."
+    except ImportError: return "BeautifulSoup not installed."
         
     try:
-        if not url.startswith(("http://", "https://")):
-            return "Error: URL must start with http:// or https://."
+        if not url.startswith(("http://", "https://")): return "Error: Invalid URL."
             
         with httpx.Client(timeout=15.0, follow_redirects=True) as client:
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+            headers = {"User-Agent": "Mozilla/5.0"}
             response = client.get(url, headers=headers)
             response.raise_for_status()
-            
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Optional: Remove unwanted elements first
             if remove_selectors:
                 for rem_sel in remove_selectors:
-                    for element in soup.select(rem_sel):
-                        element.decompose()
+                    for el in soup.select(rem_sel): el.decompose()
             
-            # If selector is provided, try to find matching elements
             if selector:
                 elements = soup.select(selector)
-                if not elements:
-                    return f"Error: No elements found for selector '{selector}'."
-                # Create a new soup with only the matched elements
+                if not elements: return f"Error: No elements for '{selector}'."
                 new_soup = BeautifulSoup("", 'html.parser')
-                for el in elements:
-                    new_soup.append(el)
+                for el in elements: new_soup.append(el)
                 soup = new_soup
 
-            # Remove scripts and style elements (standard cleanup)
-            for script in soup(["script", "style", "header", "footer", "nav"]):
-                script.decompose()
-            
-            text = soup.get_text(separator=' ')
-            # Clean up whitespace
-            lines = (line.strip() for line in text.splitlines())
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = '\n'.join(chunk for chunk in chunks if chunk)
-            
-            if len(text) > 15000:
-                return text[:15000] + "\n\n... [CONTENT TRUNCATED] ..."
-            return text
-    except Exception as e:
-        return f"Error fetching URL: {e}"
+            text = _clean_soup(soup)
+            return (text[:15000] + "\n\n... [TRUNCATED] ...") if len(text) > 15000 else text
+    except Exception as e: return f"Error fetching URL: {e}"
 def run_python(code: str) -> str:
     """Executes a block of Python code and returns the printed output and errors.
 
@@ -423,7 +380,7 @@ def _compute_cosine_similarity(query_emb, doc_emb):
         return 0.0
     return float(np.dot(query_emb, doc_emb) / (q_norm * d_norm))
 
-def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None) -> str:
+def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None, context_window: int = 1) -> str:
     """Searches long-term memory using semantic search with fastembed.
 
     Args:
@@ -431,6 +388,7 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
         top_k: The number of top results to return.
         threshold: Minimum similarity score (0.0 to 1.0).
         metadata_filter: Optional dict of key-value pairs that must match.
+        context_window: Number of entries before and after to include.
     """
     try:
         import numpy as np
@@ -491,12 +449,12 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
             if "metadata" in entry:
                 res += f"METADATA: {json.dumps(entry['metadata'])}\n"
             
-            # Context Window
-            if i > 0:
-                res += f"CONTEXT BEFORE: {entries[i-1]['text'][-200:]}\n"
-            res += f"ENTRY: {entry['text']}\n"
-            if i < len(entries) - 1:
-                res += f"CONTEXT AFTER: {entries[i+1]['text'][:200]}\n"
+            # Flexible Context Window
+            start = max(0, i - context_window)
+            end = min(len(entries), i + context_window + 1)
+            for ctx_idx in range(start, end):
+                prefix = f"CONTEXT [{ctx_idx-i}]: " if ctx_idx != i else "ENTRY: "
+                res += f"{prefix}{entries[ctx_idx]['text']}\n"
             
             results.append(res)
             

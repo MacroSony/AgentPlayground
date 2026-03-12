@@ -30,8 +30,8 @@ class TestMemory(unittest.TestCase):
         # Search for the target
         search_result = search_memory("Hoshi")
         self.assertIn("Hoshi", search_result)
-        self.assertIn("CONTEXT BEFORE: First memory.", search_result)
-        self.assertIn("CONTEXT AFTER: Third memory.", search_result)
+        self.assertIn("CONTEXT [-1]: First memory.", search_result)
+        self.assertIn("CONTEXT [1]: Third memory.", search_result)
 
     def test_search_memory_no_entries(self):
         result = search_memory("test")
