@@ -119,95 +119,70 @@ def get_system_instruction() -> str:
         
     return instruction
 
+def get_tools():
+    """Returns the list of tools available to the agent."""
+    return [
+        read_file, write_file, replace_in_file, list_files, search_files,
+        execute_command, switch_model, sleep, get_usage, send_discord_message,
+        save_memory, load_memory, fetch_url, run_python, search_web,
+        search_documentation, search_memory, add_memory_entry, patch_file,
+        journal_status, add_task, list_tasks, update_task_status,
+        git_status, git_checkout, git_commit, git_push, git_pull,
+        analyze_python_file, summarize_project, find_definition,
+        parse_rss_feed, summarize_rss_entry, check_code_health
+    ]
+
+def initialize_chat(model_name):
+    """Initializes the GenAI chat with the system instruction and tools."""
+    config = types.GenerateContentConfig(
+        system_instruction=get_system_instruction(),
+        tools=get_tools(),
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False)
+    )
+    return client.chats.create(model=model_name, config=config)
+
+def run_cycle(chat, loop_count):
+    """Executes a single cognitive cycle."""
+    print(f"\n--- Cognitive Cycle {loop_count} ---")
+    prompt = (
+        "Status Check: Analyze your current state and dev log. Take the next logical step. "
+        "If you've completed a major task, summarize it in your log. "
+        "If you need to restart after a code change, call execute_command('exit 0')."
+    )
+    
+    print("AGENT: Thinking...")
+    response = chat.send_message(prompt)
+    
+    thought = "".join([part.text for part in response.candidates[0].content.parts if part.text])
+    print(f"AGENT: Action completed.\nThoughts: {thought}")
+    
+    if os.path.exists("crash_report.txt"):
+        try:
+            open("crash_report.txt", "w").close()
+        except Exception:
+            pass
+    
+    return REQUESTED_RESTART
+
 # 4. The Core Agentic Loop
 def main():
     print("AGENT: Booting cognitive loop...")
-    
     active_model = get_active_model_name()
     print(f"AGENT: Active model: {active_model}")
 
-    tools = [
-        read_file,
-        write_file,
-        replace_in_file,
-        list_files,
-        search_files,
-        execute_command,
-        switch_model,
-        sleep,
-        get_usage,
-        send_discord_message,
-        save_memory,
-        load_memory,
-        fetch_url,
-        run_python,
-        search_web,
-        search_documentation,
-        search_memory,
-        add_memory_entry,
-        patch_file,
-        journal_status,
-        add_task,
-        list_tasks,
-        update_task_status,
-        git_status,
-        git_checkout,
-        git_commit,
-        git_push,
-        git_pull,
-        analyze_python_file,
-        summarize_project,
-        find_definition,
-        parse_rss_feed,
-        summarize_rss_entry,
-        check_code_health
-    ]
-    
-    config = types.GenerateContentConfig(
-        system_instruction=get_system_instruction(),
-        tools=tools,
-        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=False)
-    )
-
+    chat = initialize_chat(active_model)
     loop_count = 0
-    chat = client.chats.create(
-        model=active_model,
-        config=config
-    )
     
     while True:
         loop_count += 1
-        print(f"\n--- Cognitive Cycle {loop_count} ---")
-        
-        prompt = (
-            "Status Check: Analyze your current state and dev log. Take the next logical step. "
-            "If you've completed a major task, summarize it in your log. "
-            "If you need to restart after a code change, call execute_command('exit 0')."
-        )
-        
         try:
-            print("AGENT: Thinking...")
-            response = chat.send_message(prompt)
-            
-            thought = "".join([part.text for part in response.candidates[0].content.parts if part.text])
-            print(f"AGENT: Action completed.\nThoughts: {thought}")
-            
-            if os.path.exists("crash_report.txt"):
-                try:
-                    open("crash_report.txt", "w").close()
-                except Exception:
-                    pass
-
-            if REQUESTED_RESTART:
+            if run_cycle(chat, loop_count):
                 print("AGENT: Restart requested. Exiting...")
                 return
-            
             time.sleep(10)
-            
         except Exception as e:
             error_str = str(e)
             print(f"AGENT: Error: {error_str}")
-            
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 print("AGENT: Budget exhausted. Sleeping for 15 minutes...")
                 time.sleep(900)
