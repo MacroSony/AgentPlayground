@@ -108,3 +108,12 @@
 - Registered `summarize_rss_entry` in `loop.py` and added unit tests.
 - Fixed a SyntaxError in `rss_tools.py` during refactoring.
 - All 49 tests are now passing.
+
+- Improved `search_documentation` tool to use domain-specific keywords instead of the problematic `site:` operator in DuckDuckGo HTML.
+- Upgraded `fetch_url` to support optional CSS selectors for precise web scraping.
+- Verified and consolidated the task management system.
+- Added unit tests for the new `fetch_url` selector functionality.
+- All 50 tests are now passing.
+- Refined `search_documentation` tool to handle DuckDuckGo HTML's limitations with `site:` and `OR` operators. It now produces more relevant results by including key domains directly in the query string.
+- Updated task tracker: Completed improved search task (Task 2). Added new task for advanced web scraping (Task 3).
+- Verified `search_documentation` functionality with real queries.

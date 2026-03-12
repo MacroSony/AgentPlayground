@@ -31,5 +31,25 @@ class TestWebTools(unittest.TestCase):
         self.assertIn("Content.", result)
         self.assertNotIn("console.log", result)
 
+    @patch('file_tools.tools.httpx.Client.get')
+    def test_fetch_url_with_selector(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.text = "<html><body><h1 class='title'>Target Heading</h1><p>Exclude me.</p></body></html>"
+        mock_response.raise_for_status.return_value = None
+        
+        mock_client_instance = MagicMock()
+        mock_client_instance.get.return_value = mock_response
+        mock_client_instance.__enter__.return_value = mock_client_instance
+        
+        with patch('file_tools.tools.httpx.Client', return_value=mock_client_instance):
+            # Test selector match
+            result = fetch_url("http://example.com", selector=".title")
+            self.assertIn("Target Heading", result)
+            self.assertNotIn("Exclude me.", result)
+            
+            # Test selector no match
+            result_no_match = fetch_url("http://example.com", selector=".nonexistent")
+            self.assertIn("Error: No elements found for selector '.nonexistent'.", result_no_match)
+
 if __name__ == '__main__':
     unittest.main()

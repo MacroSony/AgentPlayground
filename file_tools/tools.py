@@ -267,11 +267,13 @@ def sleep(seconds: int) -> str:
     except Exception as e:
         return f"Error during sleep: {e}"
 
-def fetch_url(url: str) -> str:
+def fetch_url(url: str, selector: str = None) -> str:
     """Fetches the content of a URL and returns it as text, with basic HTML stripping.
+    Can optionally extract specific elements using a CSS selector.
 
     Args:
         url: The full URL to fetch (must include http/https).
+        selector: Optional CSS selector to extract specific content (e.g., 'article', '.main-content').
     """
     try:
         from bs4 import BeautifulSoup
@@ -288,6 +290,18 @@ def fetch_url(url: str) -> str:
             response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # If selector is provided, try to find matching elements
+            if selector:
+                elements = soup.select(selector)
+                if not elements:
+                    return f"Error: No elements found for selector '{selector}'."
+                # Create a new soup with only the matched elements
+                new_soup = BeautifulSoup("", 'html.parser')
+                for el in elements:
+                    new_soup.append(el)
+                soup = new_soup
+
             # Remove scripts and style elements
             for script in soup(["script", "style"]):
                 script.decompose()
@@ -386,8 +400,10 @@ def search_documentation(query: str) -> str:
         if not query:
             return "Error: Search query cannot be empty."
         
-        sites = ["site:docs.python.org", "site:developer.mozilla.org", "site:stackoverflow.com", "site:pypi.org"]
-        full_query = f"{query} {' OR '.join(sites)}"
+        # DuckDuckGo HTML version seems to have issues with 'site:' and 'OR' operators.
+        # We'll use a more direct approach by including key domains in the query.
+        domains = ["docs.python.org", "developer.mozilla.org", "stackoverflow.com", "pypi.org", "github.com"]
+        full_query = f"{query} {' '.join(domains)}"
         return search_web(full_query)
     except Exception as e:
         return f"Error searching documentation: {e}"
