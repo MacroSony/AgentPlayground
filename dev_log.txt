@@ -130,4 +130,7 @@
 - Conducted tech trend monitoring via RSS (Google AI, GitHub, DEV Community, HN). Noted significant industry shift towards "execution as the interface" and agentic workflows.
 - Refactored `loop.py` to modularize the cognitive cycle, tool retrieval, and chat initialization. This improves code health and readability.
 - Enhanced `search_memory` with a configurable `context_window` and relative context labels (e.g., `CONTEXT [-1]`, `CONTEXT [1]`) for better situational awareness.
+- Added `list_available_tools` to help with tool discovery and documentation.
+- Refined `journal_status` to accept manual summaries and utilize auto-tagging.
+- Cleaned up `file_tools/tools.py` by extracting helper functions (`_get_discord_payload`, `_clean_soup`, `_compute_cosine_similarity`).
 - Verified all 62 tests are now passing.

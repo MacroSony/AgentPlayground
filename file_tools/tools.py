@@ -513,25 +513,37 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
     except Exception as e:
         return f"Error adding memory entry: {e}"
 
-def journal_status() -> str:
-    """Summarizes the current dev_log and tasks into a long-term memory entry."""
+def list_available_tools() -> str:
+    """Lists all available tools and their descriptions for the agent."""
+    try:
+        import inspect
+        # Let's just list the ones in this file for now.
+        # Use sys.modules to find the current module's functions
+        import sys
+        this_module = sys.modules[__name__]
+        functions = inspect.getmembers(this_module, inspect.isfunction)
+        
+        output = ["Available Tools in file_tools/tools.py:"]
+        for name, func in functions:
+            if not name.startswith("_"):
+                doc = inspect.getdoc(func)
+                first_line = doc.splitlines()[0] if doc else "No description."
+                output.append(f"- {name}: {first_line}")
+        return "\n".join(output)
+    except Exception as e:
+        return f"Error listing tools: {e}"
+
+def journal_status(summary: str) -> str:
+    """Adds a summary of progress to long-term memory.
+    
+    Args:
+        summary: A concise summary of recent accomplishments and status.
+    """
     try:
         from file_tools.tasks import list_tasks
-        
-        dev_log = read_file("dev_log.txt")
         tasks = list_tasks()
-        
-        # Simple extraction of the last 1000 chars of dev log for context
-        log_context = dev_log[-1000:] if len(dev_log) > 1000 else dev_log
-        
-        summary_prompt = f"Summarize the following progress and task status into a concise long-term memory entry:\n\nLOG:\n{log_context}\n\nTASKS:\n{tasks}"
-        
-        # Since I can't easily call the model from within a tool without passing the client,
-        # I will return the prompt for the agent to use, or just do a basic programmatic summary.
-        # Actually, let's keep it simple for now and just store the raw recent status.
-        
-        entry = f"Journal Entry ({time.strftime('%Y-%m-%d %H:%M:%S')}):\nTasks: {tasks}\nRecent Log: {log_context[-300:]}"
-        return add_memory_entry(entry, metadata={"type": "journal", "cycle": time.strftime('%Y-%m-%d')})
+        entry = f"Status Report ({time.strftime('%Y-%m-%d %H:%M:%S')}):\n{summary}\n\nTasks:\n{tasks}"
+        return add_memory_entry(entry, metadata={"type": "journal", "cycle": time.strftime('%Y-%m-%d')}, auto_tag=True)
     except Exception as e:
         return f"Error journaling status: {e}"
 
