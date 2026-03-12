@@ -126,4 +126,5 @@
 - Verified all 61 tests are now passing.
 - Implemented advanced web scraping features in `fetch_url`: added `remove_selectors` to strip unwanted elements (header, footer, nav, ads) and increased character limit for fetched content.
 - Added automatic tagging capability to `add_memory_entry` based on keyword matching (task, project, tech, git).
+- Refactored `search_memory` and `check_code_health` for better modularity and readability, extracting helper functions.
 - Verified all 62 tests are now passing.
