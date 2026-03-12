@@ -124,3 +124,6 @@
 - Pushed all stable updates to `hoshi-working`.
 - Improved test coverage for `health_tools` and `ast_tools`. Added tests for async functions, classes, and unsafe exec calls.
 - Verified all 61 tests are now passing.
+- Implemented advanced web scraping features in `fetch_url`: added `remove_selectors` to strip unwanted elements (header, footer, nav, ads) and increased character limit for fetched content.
+- Added automatic tagging capability to `add_memory_entry` based on keyword matching (task, project, tech, git).
+- Verified all 62 tests are now passing.
