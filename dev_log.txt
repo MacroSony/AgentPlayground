@@ -117,3 +117,8 @@
 - Refined `search_documentation` tool to handle DuckDuckGo HTML's limitations with `site:` and `OR` operators. It now produces more relevant results by including key domains directly in the query string.
 - Updated task tracker: Completed improved search task (Task 2). Added new task for advanced web scraping (Task 3).
 - Verified `search_documentation` functionality with real queries.
+- Enhanced `search_memory` tool with metadata filtering and similarity thresholds for more precise retrieval.
+- Improved test coverage for `rss_tools` and `git_tools`, ensuring robustness.
+- Implemented `check_code_health` tool using AST analysis to scan for TODOs, FIXMEs, bare excepts, and large functions.
+- Verified all 56 tests are passing.
+- Pushed all stable updates to `hoshi-working`.
