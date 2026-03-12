@@ -162,6 +162,14 @@ def send_discord_message(message: str) -> str:
         
         usage = get_usage()
         
+        # Additional project metrics
+        memory = load_memory()
+        num_mem_entries = len(memory.get("entries", [])) if isinstance(memory, dict) else 0
+        
+        # Test results summary (if run_tests.sh was ever run and output saved, but let's just count files for now)
+        test_dir = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), "tests")
+        num_tests = len([f for f in os.listdir(test_dir) if f.startswith("test_") and f.endswith(".py")]) if os.path.exists(test_dir) else 0
+
         payload = {
             "embeds": [{
                 "title": "Hoshi Status Update",
@@ -176,7 +184,12 @@ def send_discord_message(message: str) -> str:
                     {
                         "name": "API Usage",
                         "value": usage[:1024] if usage else "Unknown usage.",
-                        "inline": False
+                        "inline": True
+                    },
+                    {
+                        "name": "System Info",
+                        "value": f"Tests: {num_tests} files\nMemory: {num_mem_entries} entries",
+                        "inline": True
                     }
                 ],
                 "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())

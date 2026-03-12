@@ -32,5 +32,12 @@ class TestRSSTools(unittest.TestCase):
         result = parse_rss_feed("http://example.com/rss")
         self.assertIn("Error parsing RSS feed: Network Error", result)
 
+    @patch('file_tools.rss_tools.summarize_rss_entry')
+    def test_summarize_rss_entry(self, mock_summarize):
+        mock_summarize.return_value = "Summary of http://example.com/1:\n\nTest Content..."
+        result = mock_summarize("http://example.com/1")
+        self.assertIn("Summary of http://example.com/1:", result)
+        self.assertIn("Test Content...", result)
+
 if __name__ == '__main__':
     unittest.main()
