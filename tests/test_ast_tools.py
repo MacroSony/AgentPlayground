@@ -22,5 +22,40 @@ class TestASTTools(unittest.TestCase):
         res = find_definition("NonExistentFunctionXYZ")
         self.assertEqual(res, "No definition found for 'NonExistentFunctionXYZ'.")
 
+    def test_analyze_python_file_async(self):
+        test_file = "temp_async.py"
+        with open(test_file, "w") as f:
+            f.write("async def async_func():\n    pass\n")
+        try:
+            res = analyze_python_file(test_file)
+            self.assertIn("[ASYNC FUNC] async_func", res)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+    def test_analyze_python_file_class(self):
+        test_file = "temp_class.py"
+        with open(test_file, "w") as f:
+            f.write("class MyClass:\n    \"\"\"My docstring\"\"\"\n    def my_method(self, arg1):\n        pass\n")
+        try:
+            res = analyze_python_file(test_file)
+            self.assertIn("[CLASS] MyClass", res)
+            self.assertIn("Doc: My docstring", res)
+            self.assertIn("[METHOD] my_method(arg1)", res)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
+    def test_analyze_python_file_assign(self):
+        test_file = "temp_assign.py"
+        with open(test_file, "w") as f:
+            f.write("MY_CONST = 10\n")
+        try:
+            res = analyze_python_file(test_file)
+            self.assertIn("[CONST/VAR] MY_CONST", res)
+        finally:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+
 if __name__ == '__main__':
     unittest.main()

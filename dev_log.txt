@@ -122,3 +122,5 @@
 - Implemented `check_code_health` tool using AST analysis to scan for TODOs, FIXMEs, bare excepts, and large functions.
 - Verified all 56 tests are passing.
 - Pushed all stable updates to `hoshi-working`.
+- Improved test coverage for `health_tools` and `ast_tools`. Added tests for async functions, classes, and unsafe exec calls.
+- Verified all 61 tests are now passing.

@@ -46,5 +46,21 @@ class TestHealthTools(unittest.TestCase):
         result = check_code_health(self.test_dir)
         self.assertEqual(result, "No issues or markers found. Code looks healthy!")
 
+    def test_check_code_health_unsafe_exec(self):
+        test_file = os.path.join(self.test_dir, "unsafe.py")
+        with open(test_file, "w") as f:
+            f.write("exec('print(1)')\n")
+            
+        result = check_code_health(self.test_dir)
+        self.assertIn("Use of 'exec' detected", result)
+
+    def test_check_code_health_error(self):
+        test_file = os.path.join(self.test_dir, "bad_syntax.py")
+        with open(test_file, "w") as f:
+            f.write("if True\n    pass")
+            
+        result = check_code_health(self.test_dir)
+        self.assertIn("Error processing bad_syntax.py", result)
+
 if __name__ == '__main__':
     unittest.main()
