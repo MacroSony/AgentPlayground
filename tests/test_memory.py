@@ -66,5 +66,18 @@ class TestMemory(unittest.TestCase):
         result = save_memory("not a dict")
         self.assertIn("Error: Memory data must be a dictionary.", result)
 
+    def test_add_memory_entry_auto_tag(self):
+        msg = "This is a git commit message for a task"
+        res = add_memory_entry(msg, auto_tag=True)
+        # The result string includes text[:100]
+        self.assertIn("Added memory entry with tags", res)
+        self.assertIn("'git'", res)
+        self.assertIn("'task'", res)
+        
+        memory = load_memory()
+        tags = memory["entries"][-1]["metadata"]["tags"]
+        self.assertIn("git", tags)
+        self.assertIn("task", tags)
+
 if __name__ == '__main__':
     unittest.main()

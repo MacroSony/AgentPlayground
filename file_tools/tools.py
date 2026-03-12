@@ -267,13 +267,14 @@ def sleep(seconds: int) -> str:
     except Exception as e:
         return f"Error during sleep: {e}"
 
-def fetch_url(url: str, selector: str = None) -> str:
+def fetch_url(url: str, selector: str = None, remove_selectors: list = None) -> str:
     """Fetches the content of a URL and returns it as text, with basic HTML stripping.
-    Can optionally extract specific elements using a CSS selector.
+    Can optionally extract specific elements or remove unwanted ones using CSS selectors.
 
     Args:
         url: The full URL to fetch (must include http/https).
         selector: Optional CSS selector to extract specific content (e.g., 'article', '.main-content').
+        remove_selectors: Optional list of CSS selectors to remove (e.g., ['.footer', '.ad-box']).
     """
     try:
         from bs4 import BeautifulSoup
@@ -290,6 +291,12 @@ def fetch_url(url: str, selector: str = None) -> str:
             response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Optional: Remove unwanted elements first
+            if remove_selectors:
+                for rem_sel in remove_selectors:
+                    for element in soup.select(rem_sel):
+                        element.decompose()
             
             # If selector is provided, try to find matching elements
             if selector:
@@ -302,8 +309,8 @@ def fetch_url(url: str, selector: str = None) -> str:
                     new_soup.append(el)
                 soup = new_soup
 
-            # Remove scripts and style elements
-            for script in soup(["script", "style"]):
+            # Remove scripts and style elements (standard cleanup)
+            for script in soup(["script", "style", "header", "footer", "nav"]):
                 script.decompose()
             
             text = soup.get_text(separator=' ')
@@ -312,8 +319,8 @@ def fetch_url(url: str, selector: str = None) -> str:
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             text = '\n'.join(chunk for chunk in chunks if chunk)
             
-            if len(text) > 10000:
-                return text[:10000] + "\n\n... [CONTENT TRUNCATED] ..."
+            if len(text) > 15000:
+                return text[:15000] + "\n\n... [CONTENT TRUNCATED] ..."
             return text
     except Exception as e:
         return f"Error fetching URL: {e}"
@@ -471,9 +478,14 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
             save_memory(memory)
         
         # Compute cosine similarities
+        query_norm = np.linalg.norm(query_embedding)
         similarities = []
         for emb in embeddings:
-            sim = np.dot(query_embedding, emb) / (np.linalg.norm(query_embedding) * np.linalg.norm(emb))
+            emb_norm = np.linalg.norm(emb)
+            if query_norm == 0 or emb_norm == 0:
+                sim = 0.0
+            else:
+                sim = np.dot(query_embedding, emb) / (query_norm * emb_norm)
             similarities.append(float(sim))
             
         # Filter by threshold and sort
@@ -514,12 +526,13 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
     except Exception as e:
         return f"Error searching memory: {e}"
 
-def add_memory_entry(text: str, metadata: dict = None) -> str:
+def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -> str:
     """Adds a new text entry to long-term memory and pre-calculates its embedding.
 
     Args:
         text: The text content to store in memory.
         metadata: Optional dictionary of metadata (e.g., timestamp, tags).
+        auto_tag: Whether to attempt basic automatic tagging based on keywords.
     """
     try:
         import numpy as np
@@ -536,15 +549,31 @@ def add_memory_entry(text: str, metadata: dict = None) -> str:
         model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         embedding = list(model.embed([text]))[0]
         
+        final_metadata = metadata or {}
+        if auto_tag:
+            tags = set(final_metadata.get("tags", []))
+            keywords = {
+                "task": ["task", "todo", "done", "status"],
+                "project": ["project", "refactor", "tool", "loop"],
+                "tech": ["ai", "gemini", "python", "scraping", "memory"],
+                "git": ["git", "branch", "commit", "push", "pull"]
+            }
+            text_lower = text.lower()
+            for tag, keys in keywords.items():
+                if any(k in text_lower for k in keys):
+                    tags.add(tag)
+            if tags:
+                final_metadata["tags"] = list(tags)
+
         entry = {
             "text": text,
             "embedding": embedding.tolist(),
             "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            "metadata": metadata or {}
+            "metadata": final_metadata
         }
         memory["entries"].append(entry)
         save_memory(memory)
-        return f"Added memory entry: {text}"
+        return f"Added memory entry with tags {final_metadata.get('tags', [])}: {text[:100]}..."
     except Exception as e:
         return f"Error adding memory entry: {e}"
 

@@ -51,5 +51,10 @@ class TestWebTools(unittest.TestCase):
             result_no_match = fetch_url("http://example.com", selector=".nonexistent")
             self.assertIn("Error: No elements found for selector '.nonexistent'.", result_no_match)
 
+            # Test remove_selectors
+            result_remove = fetch_url("http://example.com", remove_selectors=[".title"])
+            self.assertNotIn("Target Heading", result_remove)
+            self.assertIn("Exclude me.", result_remove)
+
 if __name__ == '__main__':
     unittest.main()
