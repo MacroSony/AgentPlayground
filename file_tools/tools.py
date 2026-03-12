@@ -408,12 +408,14 @@ def search_documentation(query: str) -> str:
     except Exception as e:
         return f"Error searching documentation: {e}"
 
-def search_memory(query: str, top_k: int = 3) -> str:
+def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None) -> str:
     """Searches long-term memory using semantic search with fastembed.
 
     Args:
         query: The semantic search query.
         top_k: The number of top results to return.
+        threshold: Minimum similarity score (0.0 to 1.0).
+        metadata_filter: Optional dict of key-value pairs that must match.
     """
     try:
         import numpy as np
@@ -433,10 +435,30 @@ def search_memory(query: str, top_k: int = 3) -> str:
         # Get query embedding
         query_embedding = list(model.embed([query]))[0]
         
-        # Check if all entries have embeddings
+        # Pre-filter by metadata if filter provided
+        candidate_indices = []
+        for idx, entry in enumerate(entries):
+            if metadata_filter:
+                match = True
+                entry_metadata = entry.get("metadata", {})
+                for k, v in metadata_filter.items():
+                    if entry_metadata.get(k) != v:
+                        match = False
+                        break
+                if not match:
+                    continue
+            candidate_indices.append(idx)
+            
+        if not candidate_indices:
+            return "No memory entries matching metadata filter."
+
+        # Filtered entries and their pre-calculated embeddings
+        filtered_entries = [entries[i] for i in candidate_indices]
+        
+        # Check if all filtered entries have embeddings
         needs_save = False
         embeddings = []
-        for e in entries:
+        for e in filtered_entries:
             if "embedding" in e:
                 embeddings.append(np.array(e["embedding"]))
             else:
@@ -452,14 +474,23 @@ def search_memory(query: str, top_k: int = 3) -> str:
         similarities = []
         for emb in embeddings:
             sim = np.dot(query_embedding, emb) / (np.linalg.norm(query_embedding) * np.linalg.norm(emb))
-            similarities.append(sim)
+            similarities.append(float(sim))
             
-        # Get top K indices
-        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        # Filter by threshold and sort
+        scored_results = []
+        for i, sim in enumerate(similarities):
+            if sim >= threshold:
+                original_idx = candidate_indices[i]
+                scored_results.append((sim, original_idx))
         
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+        top_results = scored_results[:top_k]
+        
+        if not top_results:
+            return f"No memory entries found above threshold {threshold}."
+            
         results = []
-        for i in top_indices:
-            i = int(i)
+        for sim, i in top_results:
             # Add context: entry before and after if they exist
             entry_text = entries[i]['text']
             timestamp = entries[i].get('timestamp', 'Unknown Time')
@@ -468,7 +499,7 @@ def search_memory(query: str, top_k: int = 3) -> str:
             context_before = entries[i-1]['text'] if i > 0 else ""
             context_after = entries[i+1]['text'] if i < len(entries) - 1 else ""
             
-            result = f"[Score: {similarities[i]:.4f}] [Time: {timestamp}]\n"
+            result = f"[Score: {sim:.4f}] [Time: {timestamp}]\n"
             if metadata:
                 result += f"METADATA: {json.dumps(metadata)}\n"
             if context_before:

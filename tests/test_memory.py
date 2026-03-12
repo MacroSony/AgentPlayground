@@ -44,7 +44,23 @@ class TestMemory(unittest.TestCase):
         
         memory = load_memory()
         self.assertIn("entries", memory)
-        self.assertEqual(memory["entries"][0]["metadata"], metadata)
+        self.assertEqual(memory["entries"][-1]["metadata"], metadata)
+
+    def test_search_memory_threshold_and_filter(self):
+        add_memory_entry("Important data about project A.", metadata={"project": "A"})
+        add_memory_entry("Irrelevant fluff about project B.", metadata={"project": "B"})
+        
+        # Test threshold
+        result = search_memory("Important project A", threshold=0.8)
+        self.assertIn("ENTRY: Important data about project A.", result)
+        
+        result = search_memory("Important project A", threshold=0.95) # Should be too high
+        self.assertIn("No memory entries found above threshold", result)
+
+        # Test metadata filter
+        result = search_memory("project", metadata_filter={"project": "B"})
+        self.assertIn("ENTRY: Irrelevant fluff about project B.", result)
+        self.assertNotIn("ENTRY: Important data about project A.", result)
 
     def test_save_memory_invalid_data(self):
         result = save_memory("not a dict")

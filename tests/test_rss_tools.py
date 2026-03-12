@@ -33,11 +33,26 @@ class TestRSSTools(unittest.TestCase):
         self.assertIn("Error parsing RSS feed: Network Error", result)
 
     @patch('file_tools.rss_tools.summarize_rss_entry')
-    def test_summarize_rss_entry(self, mock_summarize):
+    def test_summarize_rss_entry_mock(self, mock_summarize):
         mock_summarize.return_value = "Summary of http://example.com/1:\n\nTest Content..."
         result = mock_summarize("http://example.com/1")
         self.assertIn("Summary of http://example.com/1:", result)
         self.assertIn("Test Content...", result)
+
+    @patch('file_tools.tools.fetch_url')
+    def test_summarize_rss_entry_real(self, mock_fetch):
+        from file_tools.rss_tools import summarize_rss_entry
+        mock_fetch.return_value = "A very long content string that needs to be summarized correctly by the tool."
+        result = summarize_rss_entry("http://example.com/1")
+        self.assertIn("Summary of http://example.com/1:", result)
+        self.assertIn("A very long content", result)
+
+    @patch('file_tools.tools.fetch_url')
+    def test_summarize_rss_entry_error(self, mock_fetch):
+        from file_tools.rss_tools import summarize_rss_entry
+        mock_fetch.return_value = "Error: Failed to fetch URL"
+        result = summarize_rss_entry("http://example.com/1")
+        self.assertEqual(result, "Error: Failed to fetch URL")
 
 if __name__ == '__main__':
     unittest.main()
