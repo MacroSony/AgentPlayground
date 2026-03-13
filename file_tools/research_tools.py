@@ -58,21 +58,50 @@ def deep_search(query: str, max_depth: int = 2, breadths: int = 3) -> str:
     """Performs a deep, multi-step research on a given topic."""
     try:
         client = _get_genai_client()
+        # Use the active model for synthesis, but use flash for sub-steps
         model_name = "gemini-3-flash-preview"
         findings = []
         visited_urls = set()
+        current_queries = [query]
 
-        print(f"DEEP SEARCH: Starting research on '{query}'")
-        sub_queries = _generate_sub_queries(client, query, breadths, model_name)
-        sub_queries.insert(0, query)
+        print(f"DEEP SEARCH: Starting research on '{query}' (Depth: {max_depth}, Breadth: {breadths})")
 
-        for q in sub_queries[:breadths+1]:
-            print(f"DEEP SEARCH: Exploring '{q}'")
-            _process_sub_query(client, q, query, visited_urls, findings, model_name)
+        for depth in range(max_depth):
+            print(f"DEEP SEARCH: Depth {depth + 1}/{max_depth}")
+            next_queries = []
+            
+            for q in current_queries:
+                print(f"DEEP SEARCH: Exploring query: '{q}'")
+                _process_sub_query(client, q, query, visited_urls, findings, model_name)
+                
+                # After exploring, generate refined sub-queries for the next depth if needed
+                if depth < max_depth - 1:
+                    new_subs = _generate_sub_queries(client, f"Refine search based on: {q}", breadths, model_name)
+                    next_queries.extend(new_subs)
+            
+            current_queries = list(set(next_queries))[:breadths] # Limit breadths for next level
+            if not current_queries:
+                break
 
         print("DEEP SEARCH: Synthesizing findings...")
-        all_findings_text = "\n\n".join([f"Source: {f['source']}\n{f['text']}" for f in findings])
-        synthesis_prompt = f"Research Topic: {query}\nFindings:\n{all_findings_text}\nProvide a comprehensive report."
+        # Structuring findings for better synthesis
+        findings_summary = ""
+        for i, f in enumerate(findings):
+            findings_summary += f"--- Finding {i+1} (Source: {f['source']}) ---\n{f['text']}\n\n"
+
+        synthesis_prompt = f"""
+        Research Topic: {query}
+        
+        Collected Findings:
+        {findings_summary}
+        
+        Instructions:
+        1. Provide a comprehensive, structured report on the research topic.
+        2. Use headers and bullet points for readability.
+        3. Cite the sources where appropriate.
+        4. Highlight any conflicting information found.
+        5. Conclude with a summary of the most important takeaways.
+        """
         
         final_response = client.models.generate_content(model=model_name, contents=synthesis_prompt)
         report = final_response.text

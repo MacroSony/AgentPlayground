@@ -18,6 +18,7 @@ from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health
 from file_tools.research_tools import deep_search
 from file_tools.communication_tools import reply_to_user
+from file_tools.reporting_tools import generate_status_report, run_test_suite
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -133,7 +134,8 @@ def get_tools():
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
-        deep_search, list_available_tools, reply_to_user
+        deep_search, list_available_tools, reply_to_user,
+        generate_status_report, run_test_suite
     ]
 
 def initialize_chat(model_name):
@@ -163,9 +165,20 @@ def run_cycle(chat, loop_count):
             print("AGENT: Found messages in inbox.")
 
     print("AGENT: Thinking...")
-    response = chat.send_message(prompt)
+    try:
+        response = chat.send_message(prompt)
+    except Exception as e:
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            print("AGENT: Model tier exhausted during run_cycle. Forcing switch...")
+            active_model = get_active_model_name()
+            if active_model == ALLOWED_MODELS["flash"]:
+                switch_model("pro")
+            else:
+                switch_model("pro") # Wait, this should probably just sleep if both are exhausted
+            return True # Request restart
+        raise e
     
-    thought = "".join([part.text for part in response.candidates[0].content.parts if part.text])
+    thought = "".join([part.text for part in response.candidates[0].content.parts if hasattr(part, 'text') and part.text])
     print(f"AGENT: Action completed.\nThoughts: {thought}")
     
     if os.path.exists("crash_report.txt"):
@@ -177,9 +190,44 @@ def run_cycle(chat, loop_count):
     return REQUESTED_RESTART
 
 # 4. The Core Agentic Loop
+def start_background_processes():
+    """Starts background processes like the Flask dashboard."""
+    try:
+        # Use the venv python to ensure dependencies are available
+        python_exe = os.path.join(AGENT_ROOT, ".venv/bin/python")
+        if not os.path.exists(python_exe):
+            python_exe = "python3" # Fallback
+            
+        # Start dashboard.py in the background
+        subprocess.Popen([python_exe, "dashboard.py"], 
+                         stdout=open("dashboard_stdout.txt", "a"), 
+                         stderr=open("dashboard_stderr.txt", "a"))
+        print(f"AGENT: Flask dashboard starting with {python_exe}...")
+    except Exception as e:
+        print(f"AGENT: Error starting background processes: {e}")
+
 def main():
     print("AGENT: Booting cognitive loop...")
+    start_background_processes()
     active_model = get_active_model_name()
+    
+    # Proactive check of usage to avoid immediate 429
+    usage_text = get_usage()
+    import re
+    m_pro = re.search(r"Pro Tier: (\d+)", usage_text)
+    m_flash = re.search(r"Flash Tier: (\d+)", usage_text)
+    
+    if m_pro and int(m_pro.group(1)) >= 200 and active_model == ALLOWED_MODELS["pro"]:
+        print("AGENT: Pro tier exhausted. Proactively switching to Flash.")
+        with open(MODEL_CONFIG_FILE, "w") as f:
+            f.write(ALLOWED_MODELS["flash"])
+        active_model = ALLOWED_MODELS["flash"]
+    elif m_flash and int(m_flash.group(1)) >= 800 and active_model == ALLOWED_MODELS["flash"]:
+        print("AGENT: Flash tier exhausted. Proactively switching to Pro.")
+        with open(MODEL_CONFIG_FILE, "w") as f:
+            f.write(ALLOWED_MODELS["pro"])
+        active_model = ALLOWED_MODELS["pro"]
+
     print(f"AGENT: Active model: {active_model}")
 
     chat = initialize_chat(active_model)

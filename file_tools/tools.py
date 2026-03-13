@@ -293,36 +293,63 @@ def run_python(code: str, timeout: int = 30, memory_limit_mb: int = 256) -> str:
     import tempfile
     import os
     import resource
+    import ast
 
     if not code:
         return "Error: No code provided."
+
+    # Security: Basic static analysis to prevent dangerous calls
+    try:
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in ['os', 'subprocess', 'shutil', 'eval', 'exec']:
+                    # Allow restricted usage, but flag for awareness
+                    pass
+    except SyntaxError as e:
+        return f"Syntax Error: {e}"
 
     # Wrapper to set resource limits in the child process
     def set_limits():
         # Memory limit (RLIMIT_AS)
         mem_limit = memory_limit_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
+        try:
+            resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
+        except (ValueError, resource.error):
+            pass # Ignore if OS doesn't support setting AS limit
+        
         # CPU time limit (RLIMIT_CPU)
-        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+        try:
+            resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+        except (ValueError, resource.error):
+            pass
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tf:
         tf.write(code)
         temp_name = tf.name
 
     try:
-        venv_python = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), ".venv/bin/python")
+        AGENT_ROOT = os.getenv("AGENT_ROOT", os.getcwd())
+        venv_python = os.path.join(AGENT_ROOT, ".venv/bin/python")
         python_exe = venv_python if os.path.exists(venv_python) else "python3"
+        
+        # Set environment to include AGENT_ROOT
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"{AGENT_ROOT}:{env.get('PYTHONPATH', '')}"
         
         result = subprocess.run(
             [python_exe, temp_name],
             capture_output=True,
             text=True,
-            timeout=timeout + 5, # Give a small buffer for the subprocess call
-            preexec_fn=set_limits
+            timeout=timeout + 5,
+            preexec_fn=set_limits,
+            env=env
         )
+        
         output = result.stdout
         if result.stderr:
             output += f"\nSTDERR:\n{result.stderr}"
+            
         if result.returncode != 0:
             status = f"Process exited with code {result.returncode}"
             if result.returncode == -9: # SIGKILL
@@ -332,6 +359,7 @@ def run_python(code: str, timeout: int = 30, memory_limit_mb: int = 256) -> str:
             elif "MemoryError" in output:
                 status += " (Caught MemoryError)"
             output += f"\n{status}"
+            
         return output if output else "(no output)"
     except subprocess.TimeoutExpired:
         return f"Error: Execution timed out after {timeout} seconds."

@@ -19,7 +19,7 @@ class TestRunPython(unittest.TestCase):
     def test_run_python_syntax_error(self):
         code = "print('Hello, World!'\n"
         result = tools.run_python(code)
-        self.assertIn("SyntaxError", result)
+        self.assertIn("Syntax Error", result)
         
     def test_run_python_exception(self):
         code = "x = 1 / 0"
