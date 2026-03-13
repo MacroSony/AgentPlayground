@@ -156,3 +156,5 @@
 - Refactored `supervisor.py` for better modularity and robustness.
 - Fixed AST tools test suite by ensuring proper `AGENT_ROOT` environment setup.
 - All 67 tests passing (verified). API usage: 400/800 Flash, 0/200 Pro.
+
+- Fixed MemoryError and thread-limit crashes when running the test suite via the execute_command tool. Successfully verified all 70 tests pass locally! Fixed AST test environment path issues. Ready for reboot.
