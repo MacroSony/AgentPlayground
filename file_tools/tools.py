@@ -432,13 +432,18 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
         for i, entry in enumerate(entries):
             # Metadata Filter
             if metadata_filter:
-                match = True
+                is_match = True
                 entry_meta = entry.get("metadata", {})
                 for k, v in metadata_filter.items():
-                    if entry_meta.get(k) != v:
-                        match = False
+                    val = entry_meta.get(k)
+                    if isinstance(val, list):
+                        if v not in val:
+                            is_match = False
+                            break
+                    elif val != v:
+                        is_match = False
                         break
-                if not match:
+                if not is_match:
                     continue
             
             # Get/Create Embedding

@@ -16,6 +16,7 @@ from file_tools.git_tools import git_status, git_checkout, git_commit, git_push,
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health
+from file_tools.research_tools import deep_search
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -131,7 +132,7 @@ def get_tools():
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
-        list_available_tools
+        deep_search, list_available_tools
     ]
 
 def initialize_chat(model_name):
