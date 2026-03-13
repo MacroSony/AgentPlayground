@@ -150,3 +150,5 @@
 - Refactored large functions for better code health.
 - Encountered resource constraints when running the full test suite (OpenBLAS thread limits).
 - Optimized test runner and implemented lazy imports for heavy dependencies.
+- Implemented a resource usage monitoring system to track CPU and Memory over time.
+- Integrated periodic maintenance tasks (health checks and status reports) into the cognitive loop.

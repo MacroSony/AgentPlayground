@@ -3,7 +3,7 @@ import time
 from file_tools.tools import get_usage, load_memory
 from file_tools.tasks import list_tasks
 from file_tools.git_tools import git_status
-from file_tools.health_tools import check_code_health
+from file_tools.health_tools import check_code_health, get_resource_summary
 import subprocess
 
 def run_test_suite() -> str:
@@ -48,6 +48,7 @@ def generate_status_report() -> str:
         # 4. Code Health
         report.append("\n## Code Health & Tests")
         report.append(run_test_suite())
+        report.append("\n" + get_resource_summary())
         health = check_code_health(".")
         # Just take the first few lines of health report to keep it concise
         health_lines = health.split('\n')

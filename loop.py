@@ -15,7 +15,7 @@ from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
-from file_tools.health_tools import check_code_health
+from file_tools.health_tools import check_code_health, log_resource_usage, get_resource_summary
 from file_tools.research_tools import deep_search
 from file_tools.reporting_tools import generate_status_report, run_test_suite
 
@@ -134,7 +134,7 @@ def get_tools():
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
         deep_search, list_available_tools, generate_status_report,
-        run_test_suite
+        run_test_suite, log_resource_usage, get_resource_summary
     ]
 
 def initialize_chat(model_name):
@@ -164,6 +164,7 @@ def run_periodic_tasks(loop_count):
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
     print(f"\n--- Cognitive Cycle {loop_count} ---")
+    log_resource_usage()
     run_periodic_tasks(loop_count)
     prompt = (
         "Status Check: Analyze your current state and dev log. Take the next logical step. "

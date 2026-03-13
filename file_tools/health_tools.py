@@ -1,87 +1,117 @@
 import os
+import psutil
+import time
+import json
 import ast
-import re
 
-def _scan_file_health(filepath: str, rel_path: str, results: dict, markers: list):
+def _scan_file_health(filepath, rel_path, results, markers):
+    """Scans a single file for health issues."""
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            lines = content.splitlines()
+        with open(filepath, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            # 1. Markers (TODO/FIXME)
+            for i, line in enumerate(lines, 1):
+                for m in markers:
+                    if m in line:
+                        results["markers"].append(f"{rel_path}:{i}: {line.strip()}")
             
-            # 1. Search for markers
-            for i, line in enumerate(lines):
-                for marker in markers:
-                    if marker in line:
-                        results["markers"].append(f"{rel_path}:{i+1}: {line.strip()}")
-                        
-            # 2. Structural analysis using AST
-            tree = ast.parse(content)
-            for node in ast.walk(tree):
-                # Bare excepts
-                if isinstance(node, ast.ExceptHandler) and node.type is None:
-                    results["bare_excepts"].append(f"{rel_path}:{node.lineno}: Bare except block found.")
-                
-                # Unsafe calls
-                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-                    if node.func.id in ["eval", "exec"]:
-                        results["unsafe_calls"].append(f"{rel_path}:{node.lineno}: Use of '{node.func.id}' detected.")
-                
-                # Function length
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    length = (node.end_lineno - node.lineno) if hasattr(node, "end_lineno") else 0
-                    if length > 50:
-                        results["complexity_issues"].append(f"{rel_path}:{node.lineno}: Function '{node.name}' is long ({length} lines).")
-                        
-    except Exception as e:
-        results["markers"].append(f"Error processing {rel_path}: {e}")
+            # 2. Large Functions
+            try:
+                content = "".join(lines)
+                tree = ast.parse(content)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef):
+                        start_line = node.lineno
+                        end_line = getattr(node, 'end_lineno', start_line)
+                        length = end_line - start_line
+                        if length > 50:
+                            results["large_functions"].append(f"{rel_path}:{start_line}: Function '{node.name}' is long ({length} lines).")
+            except Exception: pass
+            
+            # 3. Unsafe Practices
+            content = "".join(lines)
+            if "exec(" in content or "eval(" in content:
+                results["unsafe"].append(f"{rel_path}: Potential unsafe exec/eval found.")
+    except Exception: pass
 
-def check_code_health(directory: str = ".") -> str:
-    """Scans the codebase for TODOs, FIXMEs, and potential code quality issues.
-    
-    Args:
-        directory: The directory to scan.
-    """
-    target_dir = os.path.realpath(directory)
-    markers = ["TODO", "FIXME", "BUG", "HACK"]
-    results = {
-        "markers": [],
-        "bare_excepts": [],
-        "unsafe_calls": [],
-        "complexity_issues": []
-    }
-    
-    for root, dirs, files in os.walk(target_dir):
-        dirs[:] = [d for d in dirs if d not in [".git", ".venv", "__pycache__", ".cache", ".github", ".fastembed_cache"]]
-        for file in files:
-            if file.endswith(".py"):
+def check_code_health(directory: str) -> str:
+    """Scans the codebase for TODOs, FIXMEs, and potential code quality issues."""
+    from file_tools.tools import resolve_safe_path
+    try:
+        safe_dir = resolve_safe_path(directory)
+        results = {"markers": [], "large_functions": [], "unsafe": []}
+        markers = ["TODO", "FIXME", "BUG", "HACK"]
+        
+        for root, _, files in os.walk(safe_dir):
+            if any(p in root for p in [".git", ".venv", "__pycache__", ".cache"]): continue
+            for file in files:
+                if not file.endswith(".py"): continue
                 filepath = os.path.join(root, file)
-                rel_path = os.path.relpath(filepath, target_dir)
+                rel_path = os.path.relpath(filepath, safe_dir)
                 _scan_file_health(filepath, rel_path, results, markers)
+        
+        output = ["### Code Health Report ###"]
+        if results["markers"]:
+            output.append("\n#### Markers (TODO/FIXME/etc) ####")
+            output.extend(results["markers"])
+        if results["large_functions"]:
+            output.append("\n#### Complexity: Large Functions (>50 lines) ####")
+            output.extend(results["large_functions"])
+        if results["unsafe"]:
+            output.append("\n#### Safety Warnings ####")
+            output.extend(results["unsafe"])
+            
+        return "\n".join(output) if len(output) > 1 else "Code looks healthy!"
+    except Exception as e: return f"Error checking code health: {e}"
 
-    # Format Output
-    output = ["### Code Health Report ###\n"]
-    
-    if results["markers"]:
-        output.append("#### Markers (TODO/FIXME/etc) ####")
-        output.extend(results["markers"])
-        output.append("")
-        
-    if results["bare_excepts"]:
-        output.append("#### Potential Issues: Bare Excepts ####")
-        output.extend(results["bare_excepts"])
-        output.append("")
-        
-    if results["unsafe_calls"]:
-        output.append("#### Potential Issues: Unsafe Calls (eval/exec) ####")
-        output.extend(results["unsafe_calls"])
-        output.append("")
-        
-    if results["complexity_issues"]:
-        output.append("#### Complexity: Large Functions (>50 lines) ####")
-        output.extend(results["complexity_issues"])
-        output.append("")
-        
-    if not any(results.values()):
-        return "No issues or markers found. Code looks healthy!"
-        
-    return "\n".join(output)
+RESOURCE_LOG = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), "resource_usage.json")
+
+def get_current_resources() -> dict:
+    """Fetches current CPU and Memory usage of the agent process."""
+    try:
+        process = psutil.Process(os.getpid())
+        mem_info = process.memory_info()
+        return {
+            "timestamp": time.time(),
+            "cpu_percent": psutil.cpu_percent(interval=0.1),
+            "memory_rss": mem_info.rss,
+            "memory_vms": mem_info.vms,
+            "num_threads": process.num_threads(),
+            "uptime": time.time() - psutil.boot_time()
+        }
+    except Exception as e: return {"error": str(e)}
+
+def log_resource_usage() -> str:
+    """Logs the current resource usage to a persistent JSON file."""
+    try:
+        data = get_current_resources()
+        if "error" in data: return f"Error getting resources: {data['error']}"
+        history = []
+        if os.path.exists(RESOURCE_LOG):
+            with open(RESOURCE_LOG, "r") as f: history = json.load(f)
+        history.append(data)
+        history = history[-100:]
+        with open(RESOURCE_LOG, "w") as f: json.dump(history, f, indent=2)
+        return f"Resource usage logged at {time.ctime(data['timestamp'])}"
+    except Exception as e: return f"Error logging resources: {e}"
+
+def get_resource_summary() -> str:
+    """Returns a formatted summary of recent resource usage."""
+    try:
+        if not os.path.exists(RESOURCE_LOG): return "No resource history found."
+        with open(RESOURCE_LOG, "r") as f: history = json.load(f)
+        if not history: return "Resource history is empty."
+        latest = history[-1]
+        summary = [f"### Resource Usage Summary ({time.ctime(latest['timestamp'])}) ###"]
+        summary.append(f"- CPU: {latest['cpu_percent']}%")
+        summary.append(f"- Memory (RSS): {latest['memory_rss'] / (1024*1024):.2f} MB")
+        summary.append(f"- Threads: {latest['num_threads']}")
+        summary.append(f"- Uptime: {latest['uptime'] / 3600:.2f} hours")
+        if len(history) > 1:
+            avg_cpu = sum(h['cpu_percent'] for h in history) / len(history)
+            avg_mem = sum(h['memory_rss'] for h in history) / (len(history) * 1024 * 1024)
+            summary.append(f"\nAverage (last {len(history)} samples):")
+            summary.append(f"- Avg CPU: {avg_cpu:.2f}%")
+            summary.append(f"- Avg Memory: {avg_mem:.2f} MB")
+        return "\n".join(summary)
+    except Exception as e: return f"Error getting resource summary: {e}"

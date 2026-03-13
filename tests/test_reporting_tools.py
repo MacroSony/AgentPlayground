@@ -27,12 +27,16 @@ class TestReportingTools(unittest.TestCase):
     @patch('file_tools.reporting_tools.git_status')
     @patch('file_tools.reporting_tools.check_code_health')
     @patch('file_tools.reporting_tools.load_memory')
-    def test_generate_status_report(self, mock_load, mock_health, mock_git, mock_tasks, mock_usage):
+    @patch('file_tools.reporting_tools.run_test_suite')
+    @patch('file_tools.reporting_tools.get_resource_summary')
+    def test_generate_status_report(self, mock_res, mock_run_test, mock_load, mock_health, mock_git, mock_tasks, mock_usage):
         mock_usage.return_value = "API usage: OK"
         mock_tasks.return_value = "Tasks: OK"
         mock_git.return_value = "Git: OK"
         mock_health.return_value = "Health: OK"
         mock_load.return_value = {"entries": [{"metadata": {"tags": ["status"]}, "text": "entry 1"}]}
+        mock_run_test.return_value = "Tests: OK"
+        mock_res.return_value = "Resources: OK"
         
         report = generate_status_report()
         self.assertIn("# Hoshi Status Report", report)
