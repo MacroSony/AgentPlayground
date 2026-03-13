@@ -281,26 +281,35 @@ def fetch_url(url: str, selector: str = None, remove_selectors: list = None) -> 
             text = _clean_soup(soup)
             return (text[:15000] + "\n\n... [TRUNCATED] ...") if len(text) > 15000 else text
     except Exception as e: return f"Error fetching URL: {e}"
-def run_python(code: str, timeout: int = 30) -> str:
-    """Executes a block of Python code in a subprocess and returns the output.
+def run_python(code: str, timeout: int = 30, memory_limit_mb: int = 256) -> str:
+    """Executes a block of Python code in a subprocess with resource limits.
 
     Args:
         code: The Python code to execute.
         timeout: Maximum execution time in seconds (default 30).
+        memory_limit_mb: Memory limit in MB (default 256).
     """
     import subprocess
     import tempfile
     import os
+    import resource
 
     if not code:
         return "Error: No code provided."
+
+    # Wrapper to set resource limits in the child process
+    def set_limits():
+        # Memory limit (RLIMIT_AS)
+        mem_limit = memory_limit_mb * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
+        # CPU time limit (RLIMIT_CPU)
+        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tf:
         tf.write(code)
         temp_name = tf.name
 
     try:
-        # Use the virtual environment's python if available
         venv_python = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), ".venv/bin/python")
         python_exe = venv_python if os.path.exists(venv_python) else "python3"
         
@@ -308,13 +317,21 @@ def run_python(code: str, timeout: int = 30) -> str:
             [python_exe, temp_name],
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout + 5, # Give a small buffer for the subprocess call
+            preexec_fn=set_limits
         )
         output = result.stdout
         if result.stderr:
             output += f"\nSTDERR:\n{result.stderr}"
         if result.returncode != 0:
-            output += f"\nProcess exited with code {result.returncode}"
+            status = f"Process exited with code {result.returncode}"
+            if result.returncode == -9: # SIGKILL
+                status += " (Likely killed due to resource limits)"
+            elif result.returncode == -24: # SIGXCPU
+                status += " (Killed due to CPU time limit)"
+            elif "MemoryError" in output:
+                status += " (Caught MemoryError)"
+            output += f"\n{status}"
         return output if output else "(no output)"
     except subprocess.TimeoutExpired:
         return f"Error: Execution timed out after {timeout} seconds."
