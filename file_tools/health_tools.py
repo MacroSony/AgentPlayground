@@ -9,15 +9,16 @@ def _scan_file_health(filepath, rel_path, results, markers):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             lines = f.readlines()
+            content = "".join(lines)
+            
             # 1. Markers (TODO/FIXME)
             for i, line in enumerate(lines, 1):
                 for m in markers:
                     if m in line:
                         results["markers"].append(f"{rel_path}:{i}: {line.strip()}")
             
-            # 2. Large Functions
+            # 2. Large Functions & Bare Excepts
             try:
-                content = "".join(lines)
                 tree = ast.parse(content)
                 for node in ast.walk(tree):
                     if isinstance(node, ast.FunctionDef):
@@ -26,20 +27,29 @@ def _scan_file_health(filepath, rel_path, results, markers):
                         length = end_line - start_line
                         if length > 50:
                             results["large_functions"].append(f"{rel_path}:{start_line}: Function '{node.name}' is long ({length} lines).")
-            except Exception: pass
+                    
+                    if isinstance(node, ast.ExceptHandler):
+                        if node.type is None:
+                            results["issues"].append(f"{rel_path}:{node.lineno}: Bare except block found.")
+            except SyntaxError as e:
+                results["issues"].append(f"Error processing {rel_path}: {e}")
+            except Exception as e:
+                results["issues"].append(f"Error processing {rel_path}: {e}")
             
             # 3. Unsafe Practices
-            content = "".join(lines)
-            if "exec(" in content or "eval(" in content:
-                results["unsafe"].append(f"{rel_path}: Potential unsafe exec/eval found.")
-    except Exception: pass
+            if "exec(" in content:
+                results["unsafe"].append(f"{rel_path}: Use of 'exec' detected.")
+            if "eval(" in content:
+                results["unsafe"].append(f"{rel_path}: Use of 'eval' detected.")
+    except Exception as e:
+        results["issues"].append(f"Error opening {rel_path}: {e}")
 
 def check_code_health(directory: str) -> str:
     """Scans the codebase for TODOs, FIXMEs, and potential code quality issues."""
     from file_tools.tools import resolve_safe_path
     try:
         safe_dir = resolve_safe_path(directory)
-        results = {"markers": [], "large_functions": [], "unsafe": []}
+        results = {"markers": [], "large_functions": [], "unsafe": [], "issues": []}
         markers = ["TODO", "FIXME", "BUG", "HACK"]
         
         for root, _, files in os.walk(safe_dir):
@@ -50,18 +60,21 @@ def check_code_health(directory: str) -> str:
                 rel_path = os.path.relpath(filepath, safe_dir)
                 _scan_file_health(filepath, rel_path, results, markers)
         
-        output = ["### Code Health Report ###"]
+        output = []
         if results["markers"]:
-            output.append("\n#### Markers (TODO/FIXME/etc) ####")
+            output.append("#### Markers (TODO/FIXME/etc) ####")
             output.extend(results["markers"])
         if results["large_functions"]:
-            output.append("\n#### Complexity: Large Functions (>50 lines) ####")
+            output.append("#### Complexity: Large Functions (>50 lines) ####")
             output.extend(results["large_functions"])
         if results["unsafe"]:
-            output.append("\n#### Safety Warnings ####")
+            output.append("#### Safety Warnings ####")
             output.extend(results["unsafe"])
+        if results["issues"]:
+            output.append("#### Issues / Errors ####")
+            output.extend(results["issues"])
             
-        return "\n".join(output) if len(output) > 1 else "Code looks healthy!"
+        return "\n".join(output) if output else "No issues or markers found. Code looks healthy!"
     except Exception as e: return f"Error checking code health: {e}"
 
 RESOURCE_LOG = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), "resource_usage.json")

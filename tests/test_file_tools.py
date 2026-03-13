@@ -32,6 +32,7 @@ class TestFileTools(unittest.TestCase):
         import shutil
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
+        os.environ['AGENT_ROOT'] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def test_list_files(self):
         result = list_files(self.test_dir)

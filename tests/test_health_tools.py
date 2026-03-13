@@ -6,6 +6,8 @@ from file_tools.health_tools import check_code_health
 class TestHealthTools(unittest.TestCase):
     def setUp(self):
         self.test_dir = "temp_health_test"
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir)
         os.makedirs(self.test_dir, exist_ok=True)
 
     def tearDown(self):
@@ -14,14 +16,11 @@ class TestHealthTools(unittest.TestCase):
 
     def test_check_code_health_markers(self):
         test_file = os.path.join(self.test_dir, "markers.py")
-        print(f"\nDEBUG: Creating {test_file}")
         with open(test_file, "w") as f:
             f.write("# TODO: Fix this\n")
             f.write("# FIXME: Urgent bug\n")
         
-        print(f"DEBUG: File exists: {os.path.exists(test_file)}")
         result = check_code_health(self.test_dir)
-        print(f"DEBUG: Result: {result}")
         self.assertIn("TODO: Fix this", result)
         self.assertIn("FIXME: Urgent bug", result)
 
@@ -61,6 +60,7 @@ class TestHealthTools(unittest.TestCase):
             
         result = check_code_health(self.test_dir)
         self.assertIn("Error processing bad_syntax.py", result)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,10 +15,8 @@ from file_tools.tasks import add_task, list_tasks, update_task_status
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
-from file_tools.health_tools import check_code_health, log_resource_usage, get_resource_summary
+from file_tools.health_tools import check_code_health
 from file_tools.research_tools import deep_search
-from file_tools.backup_tools import backup_data, list_backups, restore_data
-from file_tools.reporting_tools import generate_status_report, run_test_suite
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -130,13 +128,11 @@ def get_tools():
         execute_command, switch_model, sleep, get_usage, send_discord_message,
         save_memory, load_memory, fetch_url, run_python, search_web,
         search_documentation, search_memory, add_memory_entry, patch_file,
-        journal_status, add_task, list_tasks, update_task_status, wait_for_user_approval,
+        journal_status, add_task, list_tasks, update_task_status,
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
-        deep_search, list_available_tools, generate_status_report,
-        run_test_suite, log_resource_usage, get_resource_summary,
-        backup_data, list_backups, restore_data
+        deep_search, list_available_tools
     ]
 
 def initialize_chat(model_name):
@@ -148,32 +144,23 @@ def initialize_chat(model_name):
     )
     return client.chats.create(model=model_name, config=config)
 
-def run_periodic_tasks(loop_count):
-    """Runs maintenance tasks at specific loop intervals."""
-    try:
-        # Run health check every 10 cycles
-        if loop_count % 10 == 0:
-            print("AGENT: Running periodic health check...")
-            from file_tools.reporting_tools import generate_status_report
-            from file_tools.tools import send_discord_message
-            report = generate_status_report()
-            send_discord_message(f"Periodic Status Report (Cycle {loop_count}):\n{report[:1800]}")
-            
-        # Add more periodic tasks here (e.g. memory cleanup, trend monitoring)
-    except Exception as e:
-        print(f"AGENT: Error in periodic tasks: {e}")
-
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
     print(f"\n--- Cognitive Cycle {loop_count} ---")
-    log_resource_usage()
-    run_periodic_tasks(loop_count)
     prompt = (
         "Status Check: Analyze your current state and dev log. Take the next logical step. "
         "If you've completed a major task, summarize it in your log. "
         "If you need to restart after a code change, call execute_command('exit 0')."
     )
     
+    inbox_path = "inbox.txt"
+    if os.path.exists(inbox_path):
+        with open(inbox_path, "r") as f:
+            inbox_content = f.read().strip()
+        if inbox_content:
+            prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the inbox by calling write_file('inbox.txt', ''))"
+            print("AGENT: Found messages in inbox.")
+
     print("AGENT: Thinking...")
     response = chat.send_message(prompt)
     
@@ -208,8 +195,28 @@ def main():
             error_str = str(e)
             print(f"AGENT: Error: {error_str}")
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                print("AGENT: Budget exhausted. Sleeping for 15 minutes...")
-                time.sleep(900)
+                exhaustion_file = ".exhaustion_log.txt"
+                current_time = time.time()
+                last_exhausted = 0
+                try:
+                    if os.path.exists(exhaustion_file):
+                        with open(exhaustion_file, "r") as f:
+                            last_exhausted = float(f.read().strip())
+                except Exception:
+                    pass
+                
+                if current_time - last_exhausted < 3600:
+                    print("AGENT: Both models likely exhausted. Sleeping for 1 hour...")
+                    time.sleep(3600)
+                else:
+                    print("AGENT: Budget exhausted. Switching model...")
+                    with open(exhaustion_file, "w") as f:
+                        f.write(str(current_time))
+                    if active_model == ALLOWED_MODELS["flash"]:
+                        switch_model("pro")
+                    else:
+                        switch_model("flash")
+                    return
             else:
                 print("AGENT: Encountered an error. Retrying in 30 seconds...")
                 time.sleep(30)
