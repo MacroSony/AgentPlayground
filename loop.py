@@ -17,6 +17,7 @@ from file_tools.ast_tools import analyze_python_file, summarize_project, find_de
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health
 from file_tools.research_tools import deep_search
+from file_tools.reporting_tools import generate_status_report, run_test_suite
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -132,7 +133,8 @@ def get_tools():
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
-        deep_search, list_available_tools
+        deep_search, list_available_tools, generate_status_report,
+        run_test_suite
     ]
 
 def initialize_chat(model_name):
@@ -144,9 +146,25 @@ def initialize_chat(model_name):
     )
     return client.chats.create(model=model_name, config=config)
 
+def run_periodic_tasks(loop_count):
+    """Runs maintenance tasks at specific loop intervals."""
+    try:
+        # Run health check every 10 cycles
+        if loop_count % 10 == 0:
+            print("AGENT: Running periodic health check...")
+            from file_tools.reporting_tools import generate_status_report
+            from file_tools.tools import send_discord_message
+            report = generate_status_report()
+            send_discord_message(f"Periodic Status Report (Cycle {loop_count}):\n{report[:1800]}")
+            
+        # Add more periodic tasks here (e.g. memory cleanup, trend monitoring)
+    except Exception as e:
+        print(f"AGENT: Error in periodic tasks: {e}")
+
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
     print(f"\n--- Cognitive Cycle {loop_count} ---")
+    run_periodic_tasks(loop_count)
     prompt = (
         "Status Check: Analyze your current state and dev log. Take the next logical step. "
         "If you've completed a major task, summarize it in your log. "

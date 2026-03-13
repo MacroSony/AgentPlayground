@@ -417,90 +417,58 @@ def _compute_cosine_similarity(query_emb, doc_emb):
         return 0.0
     return float(np.dot(query_emb, doc_emb) / (q_norm * d_norm))
 
-def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None, context_window: int = 1) -> str:
-    """Searches long-term memory using semantic search with fastembed.
+def _match_metadata_filter(entry_meta, metadata_filter):
+    for k, v in metadata_filter.items():
+        val = entry_meta.get(k)
+        if isinstance(val, list):
+            if v not in val: return False
+        elif val != v:
+            return False
+    return True
 
-    Args:
-        query: The semantic search query.
-        top_k: The number of top results to return.
-        threshold: Minimum similarity score (0.0 to 1.0).
-        metadata_filter: Optional dict of key-value pairs that must match.
-        context_window: Number of entries before and after to include.
-    """
+def _get_entry_embedding(model, entry):
+    import numpy as np
+    if "embedding" in entry:
+        return np.array(entry["embedding"]), False
+    doc_emb = list(model.embed([entry["text"]]))[0]
+    entry["embedding"] = doc_emb.tolist()
+    return doc_emb, True
+
+def _format_result_entry(i, sim, entries, context_window):
+    entry = entries[i]
+    res = f"[Score: {sim:.4f}] [Time: {entry.get('timestamp', 'Unknown')}]\n"
+    if "metadata" in entry:
+        res += f"METADATA: {json.dumps(entry['metadata'])}\n"
+    start = max(0, i - context_window)
+    end = min(len(entries), i + context_window + 1)
+    for ctx_idx in range(start, end):
+        prefix = f"CONTEXT [{ctx_idx-i}]: " if ctx_idx != i else "ENTRY: "
+        res += f"{prefix}{entries[ctx_idx]['text']}\n"
+    return res
+
+def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None, context_window: int = 1) -> str:
+    """Searches long-term memory using semantic search with fastembed."""
     try:
-        import numpy as np
         from fastembed import TextEmbedding
-        
-        if not query:
-            return "Error: Query cannot be empty."
-            
+        if not query: return "Error: Query cannot be empty."
         memory = load_memory()
-        if not memory or "entries" not in memory:
-            return "No memory entries found."
-            
+        if not memory or "entries" not in memory: return "No memory entries found."
         entries = memory["entries"]
         model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         query_embedding = list(model.embed([query]))[0]
-        
-        # Filtering & Scoring
-        scored_results = []
-        needs_save = False
-        
+        scored_results, needs_save = [], False
         for i, entry in enumerate(entries):
-            # Metadata Filter
-            if metadata_filter:
-                is_match = True
-                entry_meta = entry.get("metadata", {})
-                for k, v in metadata_filter.items():
-                    val = entry_meta.get(k)
-                    if isinstance(val, list):
-                        if v not in val:
-                            is_match = False
-                            break
-                    elif val != v:
-                        is_match = False
-                        break
-                if not is_match:
-                    continue
-            
-            # Get/Create Embedding
-            if "embedding" in entry:
-                doc_emb = np.array(entry["embedding"])
-            else:
-                doc_emb = list(model.embed([entry["text"]]))[0]
-                entry["embedding"] = doc_emb.tolist()
-                needs_save = True
-                
+            if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
+                continue
+            doc_emb, created = _get_entry_embedding(model, entry)
+            if created: needs_save = True
             sim = _compute_cosine_similarity(query_embedding, doc_emb)
-            if sim >= threshold:
-                scored_results.append((sim, i))
-        
-        if needs_save:
-            save_memory(memory)
-            
+            if sim >= threshold: scored_results.append((sim, i))
+        if needs_save: save_memory(memory)
         scored_results.sort(key=lambda x: x[0], reverse=True)
         top_results = scored_results[:top_k]
-        
-        if not top_results:
-            return f"No memory entries found above threshold {threshold}."
-            
-        results = []
-        for sim, i in top_results:
-            entry = entries[i]
-            res = f"[Score: {sim:.4f}] [Time: {entry.get('timestamp', 'Unknown')}]\n"
-            if "metadata" in entry:
-                res += f"METADATA: {json.dumps(entry['metadata'])}\n"
-            
-            # Flexible Context Window
-            start = max(0, i - context_window)
-            end = min(len(entries), i + context_window + 1)
-            for ctx_idx in range(start, end):
-                prefix = f"CONTEXT [{ctx_idx-i}]: " if ctx_idx != i else "ENTRY: "
-                res += f"{prefix}{entries[ctx_idx]['text']}\n"
-            
-            results.append(res)
-            
-        return "\n---\n".join(results)
+        if not top_results: return f"No memory entries found above threshold {threshold}."
+        return "\n---\n".join([_format_result_entry(i, sim, entries, context_window) for sim, i in top_results])
     except Exception as e:
         return f"Error searching memory: {e}"
 
