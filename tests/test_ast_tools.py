@@ -4,6 +4,11 @@ import sys
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 
 class TestASTTools(unittest.TestCase):
+    def setUp(self):
+        # Set environment for tool resolution
+        self.agent_root = os.getcwd()
+        os.environ["AGENT_ROOT"] = self.agent_root
+
     def test_analyze_python_file(self):
         res = analyze_python_file("file_tools/ast_tools.py")
         self.assertIn("[FUNC] analyze_python_file", res)
