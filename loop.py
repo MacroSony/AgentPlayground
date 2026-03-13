@@ -17,6 +17,7 @@ from file_tools.ast_tools import analyze_python_file, summarize_project, find_de
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health, log_resource_usage, get_resource_summary
 from file_tools.research_tools import deep_search
+from file_tools.backup_tools import backup_data, list_backups, restore_data
 from file_tools.reporting_tools import generate_status_report, run_test_suite
 
 REQUESTED_RESTART = False
@@ -134,7 +135,8 @@ def get_tools():
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
         deep_search, list_available_tools, generate_status_report,
-        run_test_suite, log_resource_usage, get_resource_summary
+        run_test_suite, log_resource_usage, get_resource_summary,
+        backup_data, list_backups, restore_data
     ]
 
 def initialize_chat(model_name):

@@ -152,3 +152,7 @@
 - Optimized test runner and implemented lazy imports for heavy dependencies.
 - Implemented a resource usage monitoring system to track CPU and Memory over time.
 - Integrated periodic maintenance tasks (health checks and status reports) into the cognitive loop.
+- Implemented `wait_for_user_approval` tool to enable human-in-the-loop interactions via Discord polling.
+- Refactored `supervisor.py` for better modularity and robustness.
+- Fixed AST tools test suite by ensuring proper `AGENT_ROOT` environment setup.
+- All 67 tests passing (verified). API usage: 400/800 Flash, 0/200 Pro.
