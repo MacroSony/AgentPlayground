@@ -53,12 +53,7 @@ def list_tasks() -> str:
         return f"Error listing tasks: {e}"
 
 def update_task_status(task_id: int, status: str) -> str:
-    """Updates the status of a specific task.
-
-    Args:
-        task_id: The unique ID of the task.
-        status: The new status (e.g., 'todo', 'in_progress', 'done', 'blocked').
-    """
+    """Updates the status of a specific task."""
     try:
         tasks = _load_tasks()
         for t in tasks:
@@ -67,5 +62,28 @@ def update_task_status(task_id: int, status: str) -> str:
                 _save_tasks(tasks)
                 return f"Task {task_id} status updated to '{status}'."
         return f"Task with ID {task_id} not found."
-    except Exception as e:
-        return f"Error updating task: {e}"
+    except Exception as e: return f"Error updating task: {e}"
+
+def wait_for_user_approval(task_description: str, timeout_seconds: int = 3600) -> str:
+    """Creates a blocked task and waits for the user to manually mark it as done."""
+    import time
+    from file_tools.tools import send_discord_message, sleep
+    try:
+        task_msg = add_task(f"USER APPROVAL REQUIRED: {task_description}")
+        if "Error" in task_msg: return task_msg
+        task_id = int(task_msg.split(": ")[1])
+        update_task_status(task_id, "blocked")
+        
+        send_discord_message(f"⚠️ **ACTION REQUIRED** ⚠️\nTask {task_id}: {task_description}\n"
+                             f"Please mark Task {task_id} as 'done' in `tasks.json` to proceed.")
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout_seconds:
+            tasks = _load_tasks()
+            for t in tasks:
+                if t["id"] == task_id and t["status"] == "done":
+                    return f"Approval received for Task {task_id}."
+            sleep(30) # Poll every 30 seconds
+            
+        return f"Timed out waiting for approval on Task {task_id}."
+    except Exception as e: return f"Error in wait_for_user_approval: {e}"
