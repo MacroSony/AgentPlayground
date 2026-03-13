@@ -281,28 +281,48 @@ def fetch_url(url: str, selector: str = None, remove_selectors: list = None) -> 
             text = _clean_soup(soup)
             return (text[:15000] + "\n\n... [TRUNCATED] ...") if len(text) > 15000 else text
     except Exception as e: return f"Error fetching URL: {e}"
-def run_python(code: str) -> str:
-    """Executes a block of Python code and returns the printed output and errors.
+def run_python(code: str, timeout: int = 30) -> str:
+    """Executes a block of Python code in a subprocess and returns the output.
 
     Args:
-        code: The Python code to execute. Use print() to see output.
+        code: The Python code to execute.
+        timeout: Maximum execution time in seconds (default 30).
     """
-    import sys
-    import io
-    import contextlib
-    import traceback
+    import subprocess
+    import tempfile
+    import os
 
     if not code:
         return "Error: No code provided."
 
-    output = io.StringIO()
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tf:
+        tf.write(code)
+        temp_name = tf.name
+
     try:
-        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
-            exec(code, {})
-        return output.getvalue()
-    except Exception:
-        error_msg = traceback.format_exc()
-        return output.getvalue() + "\n" + error_msg
+        # Use the virtual environment's python if available
+        venv_python = os.path.join(os.getenv("AGENT_ROOT", os.getcwd()), ".venv/bin/python")
+        python_exe = venv_python if os.path.exists(venv_python) else "python3"
+        
+        result = subprocess.run(
+            [python_exe, temp_name],
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        output = result.stdout
+        if result.stderr:
+            output += f"\nSTDERR:\n{result.stderr}"
+        if result.returncode != 0:
+            output += f"\nProcess exited with code {result.returncode}"
+        return output if output else "(no output)"
+    except subprocess.TimeoutExpired:
+        return f"Error: Execution timed out after {timeout} seconds."
+    except Exception as e:
+        return f"Error executing python code: {e}"
+    finally:
+        if os.path.exists(temp_name):
+            os.remove(temp_name)
 
 def search_web(query: str) -> str:
     """Searches the web using DuckDuckGo HTML and returns a list of results.
