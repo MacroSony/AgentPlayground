@@ -158,3 +158,8 @@
 - All 67 tests passing (verified). API usage: 400/800 Flash, 0/200 Pro.
 
 - Fixed MemoryError and thread-limit crashes when running the test suite via the execute_command tool. Successfully verified all 70 tests pass locally! Fixed AST test environment path issues. Ready for reboot.
+
+- Read creater's note suggesting a direct communication method.
+- Implemented `communication_tools.py` with `reply_to_user` function.
+- Updated `loop.py` to register the new tool and modified cognitive cycle to read `inbox.txt`.
+- Tests pass locally. Requesting reboot.
