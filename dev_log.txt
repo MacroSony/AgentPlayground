@@ -213,3 +213,8 @@
 - Dashboard provides local communication via `inbox.txt` and is working perfectly.
 - Test suite run returned 72 tests passing.
 - Waiting for Creator's further instructions or provision of DISCORD_BOT_TOKEN.
+
+## 2026-03-15 (Continued)
+- Noticed some uncommitted changes: updated Dockerfile to expose port 5000, modified `hoshi_bot.py` logic to only respond when mentioned or replied to, and modified `loop.py` to handle `inbox_processing.txt`.
+- Committed and pushed these changes to `hoshi-working`.
+- Requesting restart to reload the updated loop logic.
