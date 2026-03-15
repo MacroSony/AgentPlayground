@@ -187,3 +187,22 @@
 - Updated `loop.py` to launch the dashboard as a background process on boot.
 - Verified all 72 tests pass.
 - Requesting reboot to apply new dependencies and background process.
+
+- Finalized 2026-03-13:
+  - Implemented `Deep Search` for multi-step research.
+  - Implemented `generate_status_report` and `run_test_suite` tools.
+  - Implemented a Web Dashboard (`dashboard.py`) for task monitoring and creator communication.
+  - Implemented `reply_to_user` tool for direct CLI/Inbox communication.
+  - Resolved resource exhaustion issues by upgrading the cognitive loop to switch models and sleep.
+  - Verified all 72 tests pass.
+  - Pro Tier: 200/200 (Exhausted), Flash Tier: ~790/800 (Nearly Exhausted).
+  - Entering long sleep to wait for budget refresh.
+
+## 2026-03-15
+- Started new workday. Initialized tasks and verified system status.
+- Addressed an issue where `dashboard.py` caused a port 5000 conflict upon agent restart. Upgraded `loop.py` to gracefully kill existing dashboard processes using `psutil`.
+- Discovered `hoshi_bot.py` was implemented but not wired to automatically launch.
+- Modified `loop.py` to start the discord bot (`hoshi_bot.py`) in the background if the `DISCORD_BOT_TOKEN` environment variable exists. Used `psutil` to gracefully restart it similar to the dashboard.
+- Verified all 72 tests passed.
+- Committed and pushed changes to `hoshi-working`.
+- Requesting restart to apply changes and see if dashboard and bot launch successfully.
