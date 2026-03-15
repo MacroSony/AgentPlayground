@@ -22,62 +22,109 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hoshi Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
-        h1 { color: #2c3e50; }
-        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .task-list { list-style: none; padding: 0; }
-        .task-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        body { font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; line-height: 1.6; }
+        h1, h2 { color: #f8fafc; font-weight: 600; margin-top: 0; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .card { background: #1e293b; padding: 24px; margin-bottom: 24px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); }
+        .task-list { list-style: none; padding: 0; margin: 0; }
+        .task-item { border-bottom: 1px solid #334155; padding: 16px 0; transition: background-color 0.2s; }
+        .task-item:hover { background-color: #334155; border-radius: 8px; padding-left: 10px; padding-right: 10px; margin-left: -10px; margin-right: -10px; }
         .task-item:last-child { border-bottom: none; }
-        .status-todo { color: #f39c12; font-weight: bold; }
-        .status-done { color: #27ae60; font-weight: bold; }
-        .status-blocked { color: #e74c3c; font-weight: bold; }
-        .stat-card { display: inline-block; width: 140px; text-align: center; border-radius: 8px; background: #ecf0f1; margin: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .stat-label { font-size: 12px; color: #7f8c8d; display: block; }
-        .stat-value { font-size: 20px; font-weight: bold; color: #2980b9; }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 8px; }
+        .status-todo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-in_progress { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .status-done { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 24px; }
+        .stat-card { text-align: center; border-radius: 12px; background: #0f172a; padding: 20px; border: 1px solid #334155; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        .stat-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; margin-bottom: 8px; letter-spacing: 0.05em; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #38bdf8; }
+        .chat-container { height: 500px; overflow-y: auto; background: #0f172a; border: 1px solid #334155; padding: 16px; border-radius: 8px; margin-bottom: 20px; font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 14px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); scroll-behavior: smooth; }
+        .chat-entry { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #334155; }
+        .chat-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .timestamp { color: #64748b; font-size: 12px; margin-right: 8px; }
+        .user-tag { color: #f43f5e; font-weight: 700; }
+        .hoshi-tag { color: #38bdf8; font-weight: 700; }
+        .system-tag { color: #10b981; font-weight: 700; }
+        textarea { width: 100%; border-radius: 8px; border: 1px solid #475569; padding: 16px; background: #1e293b; color: #f8fafc; box-sizing: border-box; resize: vertical; font-family: inherit; font-size: 15px; outline: none; transition: border-color 0.2s; }
+        textarea:focus { border-color: #38bdf8; }
+        button { background-color: #0ea5e9; color: white; border: none; padding: 14px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.4); }
+        button:hover { background-color: #0284c7; transform: translateY(-1px); box-shadow: 0 6px 8px -1px rgba(14, 165, 233, 0.5); }
+        button:active { transform: translateY(0); box-shadow: 0 2px 4px -1px rgba(14, 165, 233, 0.4); }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Hoshi Agent Dashboard</h1>
-        <div id="stats">
-            <div class="stat-card">
-                <span class="stat-label">CPU Usage</span>
-                <span class="stat-value">{{ cpu }}%</span>
+    <div class="container">
+        <div class="main-content">
+            <div class="card">
+                <h1>Hoshi Agent Dashboard</h1>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">System CPU</span>
+                        <span class="stat-value">{{ cpu }}%</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Memory RSS</span>
+                        <span class="stat-value">{{ memory }} MB</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Pro Usage</span>
+                        <span class="stat-value">{{ pro_usage }}/200</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Flash Usage</span>
+                        <span class="stat-value">{{ flash_usage }}/800</span>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <span class="stat-label">Memory RSS</span>
-                <span class="stat-value">{{ memory }} MB</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">API (Pro)</span>
-                <span class="stat-value">{{ pro_usage }} / 200</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">API (Flash)</span>
-                <span class="stat-value">{{ flash_usage }} / 800</span>
+
+            <div class="card">
+                <h2>Communication</h2>
+                <div class="chat-container" id="chat-log">
+                    {% for entry in chat_entries %}
+                    <div class="chat-entry">
+                        {% if 'Hoshi:' in entry %}
+                            {% set parts = entry.split('Hoshi:', 1) %}
+                            <span class="timestamp">{{ parts[0] }}</span><span class="hoshi-tag">Hoshi:</span>{{ parts[1] }}
+                        {% elif 'User:' in entry %}
+                            {% set parts = entry.split('User:', 1) %}
+                            <span class="timestamp">{{ parts[0] }}</span><span class="user-tag">User:</span>{{ parts[1] }}
+                        {% else %}
+                            <span class="system-tag">{{ entry }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <form action="/send_message" method="post">
+                    <textarea name="message" rows="3" placeholder="Send a message to Hoshi's inbox..."></textarea>
+                    <br><br>
+                    <button type="submit">Send Message</button>
+                </form>
             </div>
         </div>
-    </div>
-    
-    <div class="card">
-        <h2>Send Message to Hoshi</h2>
-        <form action="/send_message" method="post">
-            <textarea name="message" rows="4" style="width: 100%; border-radius: 4px; border: 1px solid #ddd; padding: 10px;" placeholder="Type your message here..."></textarea>
-            <br><br>
-            <button type="submit" style="background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Send to Inbox</button>
-        </form>
-    </div>
 
-    <div class="card">
-        <h2>Active Tasks</h2>
-        <ul class="task-list">
-            {% for task in tasks %}
-            <li class="task-item">
-                <strong>ID: {{ task.id }}</strong> - {{ task.description }}
-                <span class="status-{{ task.status.lower() }}">[{{ task.status.upper() }}]</span>
-            </li>
-            {% endfor %}
-        </ul>
+        <div class="sidebar">
+            <div class="card">
+                <h2>Active Tasks</h2>
+                <ul class="task-list">
+                    {% for task in tasks %}
+                    <li class="task-item">
+                        <div style="margin-bottom: 5px;">
+                            <span class="status-badge status-{{ task.status.lower().replace(' ', '_') }}">{{ task.status.upper() }}</span>
+                            <small class="timestamp" style="float: right;">ID: #{{ task.id }}</small>
+                        </div>
+                        <div style="margin-top: 8px;">{{ task.description }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -90,6 +137,22 @@ HTML_TEMPLATE = """
         const chatLog = document.getElementById('chat-log');
         if (chatLog) {
             chatLog.scrollTop = chatLog.scrollHeight;
+        }
+        
+        // Auto-refresh tasks list via API without full page reload
+        async function refreshTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                const tasks = await response.json();
+                
+                // If tasks data structure changed, just reload the page for now
+                // In a fuller implementation, this would dynamically update the DOM
+                if (Math.random() > 0.8) {
+                    location.reload();
+                }
+            } catch (e) {
+                console.error("Failed to fetch tasks", e);
+            }
         }
     </script>
 </body>

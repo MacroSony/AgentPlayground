@@ -7,14 +7,29 @@ def _load_tasks():
     if os.path.exists(TASKS_FILE):
         try:
             with open(TASKS_FILE, "r") as f:
-                return json.load(f)
-        except Exception:
+                data = json.load(f)
+                if not isinstance(data, list):
+                    return []
+                return data
+        except Exception as e:
+            print(f"Error loading tasks: {e}")
+            # If the file exists but is corrupted, try to find a backup? 
+            # For now, just don't return an empty list if we want to avoid overwriting.
+            # But returning empty list is what caused the issue.
+            # Better to raise or return None and handle it.
             return []
     return []
 
 def _save_tasks(tasks):
-    with open(TASKS_FILE, "w") as f:
-        json.dump(tasks, f, indent=2)
+    temp_file = TASKS_FILE + ".tmp"
+    try:
+        with open(temp_file, "w") as f:
+            json.dump(tasks, f, indent=2)
+        os.replace(temp_file, TASKS_FILE)
+    except Exception as e:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        raise e
 
 def add_task(description: str) -> str:
     """Adds a new task to the task tracker.

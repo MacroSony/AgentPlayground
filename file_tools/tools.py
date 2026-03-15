@@ -475,16 +475,24 @@ def _format_result_entry(i, sim, entries, context_window):
     return res
 
 def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None, context_window: int = 1) -> str:
-    """Searches long-term memory using semantic search with fastembed."""
+    """Searches long-term memory using semantic search with fastembed, with a keyword fallback."""
+    import os
+    # Mitigate OpenBLAS/threading issues in resource-constrained environments
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    
+    if not query: return "Error: Query cannot be empty."
+    memory = load_memory()
+    if not memory or "entries" not in memory: return "No memory entries found."
+    entries = memory["entries"]
+
+    scored_results = []
     try:
         from fastembed import TextEmbedding
-        if not query: return "Error: Query cannot be empty."
-        memory = load_memory()
-        if not memory or "entries" not in memory: return "No memory entries found."
-        entries = memory["entries"]
         model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
         query_embedding = list(model.embed([query]))[0]
-        scored_results, needs_save = [], False
+        needs_save = False
         for i, entry in enumerate(entries):
             if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
                 continue
@@ -494,23 +502,33 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
             if sim >= threshold: scored_results.append((sim, i))
         if needs_save: save_memory(memory)
         scored_results.sort(key=lambda x: x[0], reverse=True)
-        top_results = scored_results[:top_k]
-        if not top_results: return f"No memory entries found above threshold {threshold}."
-        return "\n---\n".join([_format_result_entry(i, sim, entries, context_window) for sim, i in top_results])
     except Exception as e:
-        return f"Error searching memory: {e}"
+        print(f"AGENT: Semantic search failed ({e}), falling back to keyword search.")
+        scored_results = []
+        import re
+        def tokenize(t): return set(re.findall(r'\w+', t.lower()))
+        query_tokens = tokenize(query)
+        for i, entry in enumerate(entries):
+            if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
+                continue
+            entry_tokens = tokenize(entry.get("text", ""))
+            score = len(query_tokens.intersection(entry_tokens))
+            sim = min(1.0, score / max(1, len(query_tokens)))
+            if sim >= threshold:
+                scored_results.append((sim, i))
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+
+    top_results = scored_results[:top_k]
+    if not top_results:
+        if any(sim < threshold for sim, _ in scored_results) or not entries:
+            return f"No memory entries found above threshold {threshold}."
+        return f"No memory entries found for query: {query}"
+    return "\n---\n".join([_format_result_entry(i, sim, entries, context_window) for sim, i in top_results])
 
 def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -> str:
-    """Adds a new text entry to long-term memory and pre-calculates its embedding.
-
-    Args:
-        text: The text content to store in memory.
-        metadata: Optional dictionary of metadata (e.g., timestamp, tags).
-        auto_tag: Whether to attempt basic automatic tagging based on keywords.
-    """
+    """Adds a new text entry to long-term memory and pre-calculates its embedding."""
     try:
         import numpy as np
-        from fastembed import TextEmbedding
         import time
         
         if not text:
@@ -520,8 +538,18 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
         if "entries" not in memory:
             memory["entries"] = []
             
-        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-        embedding = list(model.embed([text]))[0]
+        embedding = None
+        try:
+            # Mitigate OpenBLAS/threading issues in resource-constrained environments
+            import os
+            os.environ["OMP_NUM_THREADS"] = "1"
+            os.environ["OPENBLAS_NUM_THREADS"] = "1"
+            os.environ["MKL_NUM_THREADS"] = "1"
+            from fastembed import TextEmbedding
+            model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+            embedding = list(model.embed([text]))[0].tolist()
+        except Exception as e:
+            print(f"AGENT: FastEmbed failed ({e}), adding entry without embedding.")
         
         final_metadata = metadata or {}
         if auto_tag:
@@ -541,7 +569,7 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
 
         entry = {
             "text": text,
-            "embedding": embedding.tolist(),
+            "embedding": embedding,
             "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             "metadata": final_metadata
         }

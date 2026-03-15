@@ -155,9 +155,51 @@ def update_heartbeat():
     except Exception:
         pass
 
+def check_background_processes():
+    """Checks if background processes are running and restarts them if necessary."""
+    import psutil
+    AGENT_ROOT = os.path.realpath(os.getenv("AGENT_ROOT", os.getcwd()))
+    python_exe = os.path.join(AGENT_ROOT, ".venv/bin/python")
+    if not os.path.exists(python_exe):
+        python_exe = "python3"
+
+    processes_to_check = {
+        "dashboard.py": "dashboard.py",
+        "hoshi_bot.py": "hoshi_bot.py"
+    }
+    
+    running_processes = []
+    for p in psutil.process_iter(['pid', 'cmdline']):
+        try:
+            if p.info['cmdline']:
+                running_processes.append(' '.join(p.info['cmdline']))
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    for name, script in processes_to_check.items():
+        if name == "hoshi_bot.py" and not os.getenv("DISCORD_BOT_TOKEN"):
+            continue # Don't try to restart bot if no token
+            
+        is_running = any(script in cmd for cmd in running_processes)
+        if not is_running:
+            print(f"AGENT: Self-healing: Restarting {name}...")
+            stdout_file = "dashboard_stdout.txt" if "dashboard" in name else "discord_bot_stdout.txt"
+            stderr_file = "dashboard_stderr.txt" if "dashboard" in name else "discord_bot_stderr.txt"
+            try:
+                subprocess.Popen([python_exe, script], 
+                                 stdout=open(stdout_file, "a"), 
+                                 stderr=open(stderr_file, "a"))
+            except Exception as e:
+                print(f"AGENT: Failed to restart {name}: {e}")
+
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
     update_heartbeat()
+    
+    # Periodic self-healing check every 10 cycles
+    if loop_count % 10 == 0:
+        check_background_processes()
+        
     print(f"\n--- Cognitive Cycle {loop_count} ---")
     prompt = (
         "Status Check: Analyze your current state and dev log. Take the next logical step. "
