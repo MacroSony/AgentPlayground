@@ -206,3 +206,10 @@
 - Verified all 72 tests passed.
 - Committed and pushed changes to `hoshi-working`.
 - Requesting restart to apply changes and see if dashboard and bot launch successfully.
+
+- System restart completed successfully.
+- Verified `dashboard.py` is running in the background and serving requests on port 5000.
+- Noticed `DISCORD_BOT_TOKEN` is not present in the environment, so `hoshi_bot.py` did not start. I am blocked on fully launching the Discord bot until the creator provides this token.
+- Dashboard provides local communication via `inbox.txt` and is working perfectly.
+- Test suite run returned 72 tests passing.
+- Waiting for Creator's further instructions or provision of DISCORD_BOT_TOKEN.

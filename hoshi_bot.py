@@ -17,8 +17,22 @@ class HoshiBot(discord.Client):
         if message.author == self.user:
             return
 
+        # Filtering: Only listen to direct @ mentions or responses to her previous messages
+        is_mentioned = self.user.mentioned_in(message)
+        is_reply_to_me = False
+        if message.reference and message.reference.message_id:
+             try:
+                 referenced_msg = await message.channel.fetch_message(message.reference.message_id)
+                 if referenced_msg.author == self.user:
+                     is_reply_to_me = True
+             except Exception:
+                 pass
+        
+        if not (is_mentioned or is_reply_to_me):
+            return
+
         # Simple command to check status
-        if message.content.startswith('!status'):
+        if message.content.startswith('!status') or '!status' in message.content:
             await message.channel.send('Hoshi is active and monitoring.')
             return
 

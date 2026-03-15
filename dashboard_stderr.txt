@@ -3,4 +3,13 @@
  * Running on http://127.0.0.1:5000
  * Running on http://172.19.0.3:5000
 [33mPress CTRL+C to quit[0m
-127.0.0.1 - - [13/Mar/2026 07:06:18] "GET / HTTP/1.1" 200 -
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.19.0.3:5000
+[33mPress CTRL+C to quit[0m
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.19.0.3:5000
+[33mPress CTRL+C to quit[0m

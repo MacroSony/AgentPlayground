@@ -10,3 +10,13 @@ test_workspace_file_tools/
 long_term_memory.json
 active_model.txt
 tasks.json
+inbox.txt
+inbox_processing.txt
+chat_log.txt
+resource_usage.json
+dashboard_stderr.txt
+dashboard_stdout.txt
+discord_bot_stderr.txt
+discord_bot_stdout.txt
+.exhaustion_log.txt
+write_test.txt

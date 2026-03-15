@@ -157,12 +157,28 @@ def run_cycle(chat, loop_count):
     )
     
     inbox_path = "inbox.txt"
-    if os.path.exists(inbox_path):
-        with open(inbox_path, "r") as f:
-            inbox_content = f.read().strip()
-        if inbox_content:
-            prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the inbox by calling write_file('inbox.txt', ''))"
-            print("AGENT: Found messages in inbox.")
+    processing_path = "inbox_processing.txt"
+    inbox_content = ""
+    
+    # Consolidate new messages into processing file
+    if os.path.exists(inbox_path) and os.path.getsize(inbox_path) > 0:
+        try:
+            with open(inbox_path, "r") as f_in, open(processing_path, "a") as f_out:
+                f_out.write(f_in.read())
+            open(inbox_path, "w").close() # Clear incoming inbox
+        except Exception as e:
+            print(f"AGENT: Error consolidating inbox: {e}")
+            
+    if os.path.exists(processing_path):
+        try:
+            with open(processing_path, "r") as f:
+                inbox_content = f.read().strip()
+        except Exception:
+            pass
+
+    if inbox_content:
+        prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
+        print("AGENT: Found messages in inbox.")
 
     print("AGENT: Thinking...")
     response = chat.send_message(prompt)
