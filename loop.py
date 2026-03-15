@@ -147,8 +147,17 @@ def initialize_chat(model_name):
     )
     return client.chats.create(model=model_name, config=config)
 
+def update_heartbeat():
+    """Updates the heartbeat file with current timestamp."""
+    try:
+        with open("heartbeat.txt", "w") as f:
+            f.write(str(time.time()))
+    except Exception:
+        pass
+
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
+    update_heartbeat()
     print(f"\n--- Cognitive Cycle {loop_count} ---")
     prompt = (
         "Status Check: Analyze your current state and dev log. Take the next logical step. "

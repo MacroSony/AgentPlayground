@@ -41,6 +41,22 @@ def generate_status_report() -> str:
         report.append("\n## Tasks")
         report.append(list_tasks())
         
+        # Inbox check
+        report.append("\n## Inbox (Latest Messages)")
+        try:
+            inbox_processing = "inbox_processing.txt"
+            if os.path.exists(inbox_processing):
+                with open(inbox_processing, "r") as f:
+                    messages = f.readlines()[-5:]
+                    if messages:
+                        report.extend([f"- {m.strip()}" for m in messages])
+                    else:
+                        report.append("Inbox is empty.")
+            else:
+                report.append("Inbox processing file not found.")
+        except Exception as e:
+            report.append(f"Error reading inbox: {e}")
+
         # 3. Git Status
         report.append("\n## Git Status")
         report.append(git_status())
