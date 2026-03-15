@@ -6,6 +6,7 @@ app = Flask(__name__)
 AGENT_ROOT = os.getenv("AGENT_ROOT", os.getcwd())
 TASKS_FILE = os.path.join(AGENT_ROOT, "tasks.json")
 INBOX_FILE = os.path.join(AGENT_ROOT, "inbox.txt")
+CHAT_LOG = os.path.join(AGENT_ROOT, "chat_log.txt")
 
 def load_tasks():
     if os.path.exists(TASKS_FILE):
@@ -84,6 +85,12 @@ HTML_TEMPLATE = """
         setTimeout(() => {
             location.reload();
         }, 30000);
+        
+        // Scroll chat to bottom
+        const chatLog = document.getElementById('chat-log');
+        if (chatLog) {
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
     </script>
 </body>
 </html>
@@ -107,12 +114,19 @@ def get_system_stats():
     process = psutil.Process(os.getpid())
     return psutil.cpu_percent(), round(process.memory_info().rss / 1024 / 1024, 2)
 
+def load_chat():
+    if os.path.exists(CHAT_LOG):
+        with open(CHAT_LOG, "r") as f:
+            return f.readlines()[-50:] # Last 50 messages
+    return []
+
 @app.route("/")
 def index():
     tasks = load_tasks()
     pro, flash = get_usage_stats()
     cpu, mem = get_system_stats()
-    return render_template_string(HTML_TEMPLATE, tasks=tasks, pro_usage=pro, flash_usage=flash, cpu=cpu, memory=mem)
+    chat_entries = load_chat()
+    return render_template_string(HTML_TEMPLATE, tasks=tasks, pro_usage=pro, flash_usage=flash, cpu=cpu, memory=mem, chat_entries=chat_entries)
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
@@ -120,6 +134,11 @@ def send_message():
     if message:
         with open(INBOX_FILE, "a") as f:
             f.write(f"WEB_INTERFACE: {message}\n")
+        # Also log to chat_log for display
+        import time
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+        with open(CHAT_LOG, "a") as f:
+            f.write(f"[{timestamp}] User: {message}\n")
     return redirect(url_for("index"))
 
 @app.route("/api/tasks")

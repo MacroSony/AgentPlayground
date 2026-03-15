@@ -1,7 +1,12 @@
 import discord
 import os
 import asyncio
+import logging
 from file_tools.tools import read_file, write_file
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('hoshi_bot')
 
 class HoshiBot(discord.Client):
     def __init__(self, *args, **kwargs):
@@ -9,8 +14,10 @@ class HoshiBot(discord.Client):
         self.inbox_file = "inbox.txt"
 
     async def on_ready(self):
+        logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
         print(f'Logged in as {self.user} (ID: {self.user.id})')
-        print('------')
+        # Send a startup message if a default channel is known? 
+        # For now just log.
 
     async def on_message(self, message):
         # Don't respond to ourselves
@@ -37,10 +44,14 @@ class HoshiBot(discord.Client):
             return
 
         # Log the message to inbox.txt for the cognitive loop to process
+        logger.info(f"Received message from {message.author}: {message.content}")
         with open(self.inbox_file, "a") as f:
             f.write(f"DISCORD_USER [{message.author}]: {message.content}\n")
         
-        await message.channel.send(f'Message received, {message.author.display_name}. I will process it soon.')
+        try:
+            await message.channel.send(f'Message received, {message.author.display_name}. I will process it soon.')
+        except Exception as e:
+            logger.error(f"Failed to send reply: {e}")
 
 async def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
