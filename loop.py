@@ -165,18 +165,7 @@ def run_cycle(chat, loop_count):
             print("AGENT: Found messages in inbox.")
 
     print("AGENT: Thinking...")
-    try:
-        response = chat.send_message(prompt)
-    except Exception as e:
-        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-            print("AGENT: Model tier exhausted during run_cycle. Forcing switch...")
-            active_model = get_active_model_name()
-            if active_model == ALLOWED_MODELS["flash"]:
-                switch_model("pro")
-            else:
-                switch_model("pro") # Wait, this should probably just sleep if both are exhausted
-            return True # Request restart
-        raise e
+    response = chat.send_message(prompt)
     
     thought = "".join([part.text for part in response.candidates[0].content.parts if hasattr(part, 'text') and part.text])
     print(f"AGENT: Action completed.\nThoughts: {thought}")
@@ -193,6 +182,16 @@ def run_cycle(chat, loop_count):
 def start_background_processes():
     """Starts background processes like the Flask dashboard."""
     try:
+        # Kill existing dashboard process if running to free port 5000
+        import psutil
+        for p in psutil.process_iter(['pid', 'cmdline']):
+            try:
+                if p.info['cmdline'] and 'dashboard.py' in ' '.join(p.info['cmdline']):
+                    p.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        time.sleep(1)
+        
         # Use the venv python to ensure dependencies are available
         python_exe = os.path.join(AGENT_ROOT, ".venv/bin/python")
         if not os.path.exists(python_exe):
@@ -203,6 +202,21 @@ def start_background_processes():
                          stdout=open("dashboard_stdout.txt", "a"), 
                          stderr=open("dashboard_stderr.txt", "a"))
         print(f"AGENT: Flask dashboard starting with {python_exe}...")
+        
+        # Kill existing hoshi_bot process if running
+        for p in psutil.process_iter(['pid', 'cmdline']):
+            try:
+                if p.info['cmdline'] and 'hoshi_bot.py' in ' '.join(p.info['cmdline']):
+                    p.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        
+        # Start hoshi_bot.py in the background if token exists
+        if os.getenv("DISCORD_BOT_TOKEN"):
+            subprocess.Popen([python_exe, "hoshi_bot.py"], 
+                             stdout=open("discord_bot_stdout.txt", "a"), 
+                             stderr=open("discord_bot_stderr.txt", "a"))
+            print(f"AGENT: Discord bot starting with {python_exe}...")
     except Exception as e:
         print(f"AGENT: Error starting background processes: {e}")
 
@@ -217,12 +231,17 @@ def main():
     m_pro = re.search(r"Pro Tier: (\d+)", usage_text)
     m_flash = re.search(r"Flash Tier: (\d+)", usage_text)
     
-    if m_pro and int(m_pro.group(1)) >= 200 and active_model == ALLOWED_MODELS["pro"]:
+    pro_exhausted = m_pro and int(m_pro.group(1)) >= 200
+    flash_exhausted = m_flash and int(m_flash.group(1)) >= 800
+    
+    if pro_exhausted and flash_exhausted:
+        print("AGENT: Both model tiers exhausted. Proceeding with caution.")
+    elif pro_exhausted and active_model == ALLOWED_MODELS["pro"]:
         print("AGENT: Pro tier exhausted. Proactively switching to Flash.")
         with open(MODEL_CONFIG_FILE, "w") as f:
             f.write(ALLOWED_MODELS["flash"])
         active_model = ALLOWED_MODELS["flash"]
-    elif m_flash and int(m_flash.group(1)) >= 800 and active_model == ALLOWED_MODELS["flash"]:
+    elif flash_exhausted and active_model == ALLOWED_MODELS["flash"]:
         print("AGENT: Flash tier exhausted. Proactively switching to Pro.")
         with open(MODEL_CONFIG_FILE, "w") as f:
             f.write(ALLOWED_MODELS["pro"])
@@ -244,28 +263,33 @@ def main():
             error_str = str(e)
             print(f"AGENT: Error: {error_str}")
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                exhaustion_file = ".exhaustion_log.txt"
-                current_time = time.time()
-                last_exhausted = 0
-                try:
-                    if os.path.exists(exhaustion_file):
-                        with open(exhaustion_file, "r") as f:
-                            last_exhausted = float(f.read().strip())
-                except Exception:
-                    pass
-                
-                if current_time - last_exhausted < 3600:
-                    print("AGENT: Both models likely exhausted. Sleeping for 1 hour...")
-                    time.sleep(3600)
-                else:
-                    print("AGENT: Budget exhausted. Switching model...")
-                    with open(exhaustion_file, "w") as f:
-                        f.write(str(current_time))
-                    if active_model == ALLOWED_MODELS["flash"]:
-                        switch_model("pro")
+                if "SYSTEM OVERRIDE" in error_str:
+                    exhaustion_file = ".exhaustion_log.txt"
+                    current_time = time.time()
+                    last_exhausted = 0
+                    try:
+                        if os.path.exists(exhaustion_file):
+                            with open(exhaustion_file, "r") as f:
+                                last_exhausted = float(f.read().strip())
+                    except Exception:
+                        pass
+                    
+                    if current_time - last_exhausted < 3600:
+                        print("AGENT: Both models likely exhausted. Sleeping for 1 hour...")
+                        time.sleep(3600)
                     else:
-                        switch_model("flash")
-                    return
+                        print("AGENT: Budget exhausted. Switching model...")
+                        with open(exhaustion_file, "w") as f:
+                            f.write(str(current_time))
+                        if active_model == ALLOWED_MODELS["flash"]:
+                            switch_model("pro")
+                        else:
+                            switch_model("flash")
+                        return
+                else:
+                    print("AGENT: Rate limit hit (likely transient). Sleeping for 30 seconds...")
+                    time.sleep(30)
+                    continue
             else:
                 print("AGENT: Encountered an error. Retrying in 30 seconds...")
                 time.sleep(30)
