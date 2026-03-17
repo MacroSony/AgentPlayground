@@ -192,31 +192,17 @@ def check_background_processes():
             except Exception as e:
                 print(f"AGENT: Failed to restart {name}: {e}")
 
-def run_cycle(chat, loop_count):
-    """Executes a single cognitive cycle."""
-    update_heartbeat()
-    
-    # Periodic self-healing check every 10 cycles
-    if loop_count % 10 == 0:
-        check_background_processes()
-        
-    print(f"\n--- Cognitive Cycle {loop_count} ---")
-    prompt = (
-        "Status Check: Analyze your current state and dev log. Take the next logical step. "
-        "If you've completed a major task, summarize it in your log. "
-        "If you need to restart after a code change, call execute_command('exit 0')."
-    )
-    
+def _process_inbox(prompt):
+    """Helper function to consolidate and read inbox messages."""
     inbox_path = "inbox.txt"
     processing_path = "inbox_processing.txt"
     inbox_content = ""
     
-    # Consolidate new messages into processing file
     if os.path.exists(inbox_path) and os.path.getsize(inbox_path) > 0:
         try:
             with open(inbox_path, "r") as f_in, open(processing_path, "a") as f_out:
                 f_out.write(f_in.read())
-            open(inbox_path, "w").close() # Clear incoming inbox
+            open(inbox_path, "w").close()
         except Exception as e:
             print(f"AGENT: Error consolidating inbox: {e}")
             
@@ -230,6 +216,24 @@ def run_cycle(chat, loop_count):
     if inbox_content:
         prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
         print("AGENT: Found messages in inbox.")
+        
+    return prompt
+
+def run_cycle(chat, loop_count):
+    """Executes a single cognitive cycle."""
+    update_heartbeat()
+    
+    if loop_count % 10 == 0:
+        check_background_processes()
+        
+    print(f"\n--- Cognitive Cycle {loop_count} ---")
+    prompt = (
+        "Status Check: Analyze your current state and dev log. Take the next logical step. "
+        "If you've completed a major task, summarize it in your log. "
+        "If you need to restart after a code change, call execute_command('exit 0')."
+    )
+    
+    prompt = _process_inbox(prompt)
 
     print("AGENT: Thinking...")
     response = chat.send_message(prompt)
