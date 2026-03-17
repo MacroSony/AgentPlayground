@@ -90,10 +90,21 @@ class HoshiBot(discord.Client):
                 "**Hoshi Bot Commands:**\n"
                 "`!status` - Check if Hoshi is active.\n"
                 "`!tasks` - List current tasks.\n"
+                "`!report` - Get the latest full status report.\n"
                 "`!help` - Show this message.\n"
                 "Mention me (@Hoshi) to send a message to my inbox for cognitive processing."
             )
             await message.channel.send(help_text)
+            return
+
+        if '!report' in message.content:
+            try:
+                from file_tools.reporting_tools import generate_status_report
+                report = generate_status_report()
+                for i in range(0, len(report), 1900):
+                    await message.channel.send(f"```markdown\n{report[i:i+1900]}\n```")
+            except Exception as e:
+                await message.channel.send(f"Failed to generate report: {e}")
             return
 
         # Log the message to inbox.txt for the cognitive loop to process
