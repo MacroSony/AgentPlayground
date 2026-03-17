@@ -225,6 +225,10 @@ def send_message():
 def api_tasks():
     return jsonify(load_tasks())
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok", "uptime": get_system_stats()[1]})
+
 if __name__ == "__main__":
     # Note: Running on port 5000 inside the container.
     app.run(host="0.0.0.0", port=5000)
