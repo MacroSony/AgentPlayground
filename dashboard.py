@@ -144,16 +144,33 @@ HTML_TEMPLATE = """
             try {
                 const response = await fetch('/api/tasks');
                 const tasks = await response.json();
+                const taskList = document.querySelector('.task-list');
                 
-                // If tasks data structure changed, just reload the page for now
-                // In a fuller implementation, this would dynamically update the DOM
-                if (Math.random() > 0.8) {
-                    location.reload();
+                let newHtml = '';
+                for (const task of tasks) {
+                    const statusClass = task.status.toLowerCase().replace(' ', '_');
+                    newHtml += `
+                        <li class="task-item">
+                            <div style="margin-bottom: 5px;">
+                                <span class="status-badge status-${statusClass}">${task.status.toUpperCase()}</span>
+                                <small class="timestamp" style="float: right;">ID: #${task.id}</small>
+                            </div>
+                            <div style="margin-top: 8px;">${task.description}</div>
+                        </li>
+                    `;
+                }
+                
+                if (taskList && taskList.innerHTML !== newHtml) {
+                    taskList.innerHTML = newHtml;
                 }
             } catch (e) {
                 console.error("Failed to fetch tasks", e);
             }
         }
+        
+        // Poll for tasks more frequently
+        setInterval(refreshTasks, 5000);
+        
     </script>
 </body>
 </html>
