@@ -343,9 +343,7 @@ def main():
     print("AGENT: Booting cognitive loop...")
     start_background_processes()
     active_model = _check_and_switch_model(get_active_model_name())
-
     print(f"AGENT: Active model: {active_model}")
-
     chat = initialize_chat(active_model)
     loop_count = 0
     
@@ -357,19 +355,21 @@ def main():
                 return
             time.sleep(10)
         except Exception as e:
-            error_str = str(e)
-            print(f"AGENT: Error: {error_str}")
-            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                if "SYSTEM OVERRIDE" in error_str:
-                    _handle_exhaustion(active_model)
-                    return
-                else:
-                    print("AGENT: Rate limit hit (likely transient). Sleeping for 30 seconds...")
-                    time.sleep(30)
-                    continue
-            else:
-                print("AGENT: Encountered an error. Retrying in 30 seconds...")
-                time.sleep(30)
+            _handle_loop_error(e, active_model)
+
+def _handle_loop_error(e, active_model):
+    error_str = str(e)
+    print(f"AGENT: Error: {error_str}")
+    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+        if "SYSTEM OVERRIDE" in error_str:
+            _handle_exhaustion(active_model)
+            # Exiting happens naturally if exhaustion switches model, or we loop if sleeping
+        else:
+            print("AGENT: Rate limit hit (likely transient). Sleeping for 30 seconds...")
+            time.sleep(30)
+    else:
+        print("AGENT: Encountered an error. Retrying in 30 seconds...")
+        time.sleep(30)
 
 if __name__ == "__main__":
     main()
