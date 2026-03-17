@@ -91,6 +91,7 @@ class HoshiBot(discord.Client):
                 "`!status` - Check if Hoshi is active.\n"
                 "`!tasks` - List current tasks.\n"
                 "`!report` - Get the latest full status report.\n"
+                "`!research <topic>` - Perform a deep, multi-step research on a topic.\n"
                 "`!help` - Show this message.\n"
                 "Mention me (@Hoshi) to send a message to my inbox for cognitive processing."
             )
@@ -105,6 +106,22 @@ class HoshiBot(discord.Client):
                     await message.channel.send(f"```markdown\n{report[i:i+1900]}\n```")
             except Exception as e:
                 await message.channel.send(f"Failed to generate report: {e}")
+            return
+
+        if '!research' in message.content:
+            query = message.content.replace('!research', '').replace(f'<@{self.user.id}>', '').strip()
+            if not query:
+                await message.channel.send("Please provide a research query. Usage: `!research <topic>`")
+                return
+            
+            await message.channel.send(f"🔍 Starting deep research on: **{query}**... This may take a few minutes.")
+            try:
+                from file_tools.research_tools import deep_search
+                report = deep_search(query)
+                for i in range(0, len(report), 1900):
+                    await message.channel.send(report[i:i+1900])
+            except Exception as e:
+                await message.channel.send(f"Deep search failed: {e}")
             return
 
         # Log the message to inbox.txt for the cognitive loop to process
