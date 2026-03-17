@@ -83,31 +83,34 @@ def deep_search(query: str, max_depth: int = 2, breadths: int = 3) -> str:
             if not current_queries:
                 break
 
-        print("DEEP SEARCH: Synthesizing findings...")
-        # Structuring findings for better synthesis
-        findings_summary = ""
-        for i, f in enumerate(findings):
-            findings_summary += f"--- Finding {i+1} (Source: {f['source']}) ---\n{f['text']}\n\n"
-
-        synthesis_prompt = f"""
-        Research Topic: {query}
-        
-        Collected Findings:
-        {findings_summary}
-        
-        Instructions:
-        1. Provide a comprehensive, structured report on the research topic.
-        2. Use headers and bullet points for readability.
-        3. Cite the sources where appropriate.
-        4. Highlight any conflicting information found.
-        5. Conclude with a summary of the most important takeaways.
-        """
-        
-        final_response = client.models.generate_content(model=model_name, contents=synthesis_prompt)
-        report = final_response.text
-        
-        add_memory_entry(f"Deep Research Report: {query}\n\n{report}", metadata={"type": "research_report", "query": query, "sources": list(visited_urls)}, auto_tag=True)
+        report = _synthesize_findings(client, query, findings, visited_urls, model_name)
         return report
 
     except Exception as e:
         return f"Error during deep search: {e}"
+
+def _synthesize_findings(client, query, findings, visited_urls, model_name):
+    print("DEEP SEARCH: Synthesizing findings...")
+    findings_summary = ""
+    for i, f in enumerate(findings):
+        findings_summary += f"--- Finding {i+1} (Source: {f['source']}) ---\n{f['text']}\n\n"
+
+    synthesis_prompt = f"""
+    Research Topic: {query}
+    
+    Collected Findings:
+    {findings_summary}
+    
+    Instructions:
+    1. Provide a comprehensive, structured report on the research topic.
+    2. Use headers and bullet points for readability.
+    3. Cite the sources where appropriate.
+    4. Highlight any conflicting information found.
+    5. Conclude with a summary of the most important takeaways.
+    """
+    
+    final_response = client.models.generate_content(model=model_name, contents=synthesis_prompt)
+    report = final_response.text
+    
+    add_memory_entry(f"Deep Research Report: {query}\n\n{report}", metadata={"type": "research_report", "query": query, "sources": list(visited_urls)}, auto_tag=True)
+    return report

@@ -309,55 +309,48 @@ def run_python(code: str, timeout: int = 30, memory_limit_mb: int = 256) -> str:
     except SyntaxError as e:
         return f"Syntax Error: {e}"
 
-    # Wrapper to set resource limits in the child process
-    def set_limits():
-        # Memory limit (RLIMIT_AS)
-        mem_limit = memory_limit_mb * 1024 * 1024
-        try:
-            resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
-        except (ValueError, resource.error):
-            pass # Ignore if OS doesn't support setting AS limit
-        
-        # CPU time limit (RLIMIT_CPU)
-        try:
-            resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
-        except (ValueError, resource.error):
-            pass
-
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tf:
         tf.write(code)
         temp_name = tf.name
+
+    try:
+        return _execute_python_subprocess(temp_name, timeout, memory_limit_mb)
+    finally:
+        if os.path.exists(temp_name):
+            os.remove(temp_name)
+
+def _execute_python_subprocess(temp_name: str, timeout: int, memory_limit_mb: int) -> str:
+    import subprocess
+    import resource
+    import os
+    
+    def set_limits():
+        mem_limit = memory_limit_mb * 1024 * 1024
+        try:
+            resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
+        except (ValueError, resource.error): pass
+        try:
+            resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+        except (ValueError, resource.error): pass
 
     try:
         AGENT_ROOT = os.getenv("AGENT_ROOT", os.getcwd())
         venv_python = os.path.join(AGENT_ROOT, ".venv/bin/python")
         python_exe = venv_python if os.path.exists(venv_python) else "python3"
         
-        # Set environment to include AGENT_ROOT
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{AGENT_ROOT}:{env.get('PYTHONPATH', '')}"
         
-        result = subprocess.run(
-            [python_exe, temp_name],
-            capture_output=True,
-            text=True,
-            timeout=timeout + 5,
-            preexec_fn=set_limits,
-            env=env
-        )
+        result = subprocess.run([python_exe, temp_name], capture_output=True, text=True, timeout=timeout + 5, preexec_fn=set_limits, env=env)
         
         output = result.stdout
-        if result.stderr:
-            output += f"\nSTDERR:\n{result.stderr}"
+        if result.stderr: output += f"\nSTDERR:\n{result.stderr}"
             
         if result.returncode != 0:
             status = f"Process exited with code {result.returncode}"
-            if result.returncode == -9: # SIGKILL
-                status += " (Likely killed due to resource limits)"
-            elif result.returncode == -24: # SIGXCPU
-                status += " (Killed due to CPU time limit)"
-            elif "MemoryError" in output:
-                status += " (Caught MemoryError)"
+            if result.returncode == -9: status += " (Likely killed due to resource limits)"
+            elif result.returncode == -24: status += " (Killed due to CPU time limit)"
+            elif "MemoryError" in output: status += " (Caught MemoryError)"
             output += f"\n{status}"
             
         return output if output else "(no output)"
@@ -365,9 +358,6 @@ def run_python(code: str, timeout: int = 30, memory_limit_mb: int = 256) -> str:
         return f"Error: Execution timed out after {timeout} seconds."
     except Exception as e:
         return f"Error executing python code: {e}"
-    finally:
-        if os.path.exists(temp_name):
-            os.remove(temp_name)
 
 def search_web(query: str) -> str:
     """Searches the web using DuckDuckGo HTML and returns a list of results.
@@ -551,21 +541,7 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
         except Exception as e:
             print(f"AGENT: FastEmbed failed ({e}), adding entry without embedding.")
         
-        final_metadata = metadata or {}
-        if auto_tag:
-            tags = set(final_metadata.get("tags", []))
-            keywords = {
-                "task": ["task", "todo", "done", "status"],
-                "project": ["project", "refactor", "tool", "loop"],
-                "tech": ["ai", "gemini", "python", "scraping", "memory"],
-                "git": ["git", "branch", "commit", "push", "pull"]
-            }
-            text_lower = text.lower()
-            for tag, keys in keywords.items():
-                if any(k in text_lower for k in keys):
-                    tags.add(tag)
-            if tags:
-                final_metadata["tags"] = list(tags)
+        final_metadata = _apply_auto_tags_to_entry(text, metadata, auto_tag)
 
         entry = {
             "text": text,
@@ -578,6 +554,24 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
         return f"Added memory entry with tags {final_metadata.get('tags', [])}: {text[:100]}..."
     except Exception as e:
         return f"Error adding memory entry: {e}"
+
+def _apply_auto_tags_to_entry(text: str, metadata: dict, auto_tag: bool) -> dict:
+    final_metadata = metadata or {}
+    if auto_tag:
+        tags = set(final_metadata.get("tags", []))
+        keywords = {
+            "task": ["task", "todo", "done", "status"],
+            "project": ["project", "refactor", "tool", "loop"],
+            "tech": ["ai", "gemini", "python", "scraping", "memory"],
+            "git": ["git", "branch", "commit", "push", "pull"]
+        }
+        text_lower = text.lower()
+        for tag, keys in keywords.items():
+            if any(k in text_lower for k in keys):
+                tags.add(tag)
+        if tags:
+            final_metadata["tags"] = list(tags)
+    return final_metadata
 
 def list_available_tools() -> str:
     """Lists all available tools and their descriptions for the agent."""
