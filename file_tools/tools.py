@@ -464,13 +464,59 @@ def _format_result_entry(i, sim, entries, context_window):
         res += f"{prefix}{entries[ctx_idx]['text']}\n"
     return res
 
+def _perform_semantic_search(query: str, entries: list, threshold: float, metadata_filter: dict) -> list:
+    """Helper for semantic search logic."""
+    import os
+    try:
+        if os.getenv("DISABLE_FASTEMBED") == "1":
+            raise ImportError("FastEmbed explicitly disabled.")
+            
+        from fastembed import TextEmbedding
+        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        query_embedding = list(model.embed([query]))[0]
+        results = []
+        needs_save = False
+        
+        for i, entry in enumerate(entries):
+            if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
+                continue
+            doc_emb, created = _get_entry_embedding(model, entry)
+            if created: needs_save = True
+            sim = _compute_cosine_similarity(query_embedding, doc_emb)
+            if sim >= threshold:
+                results.append((sim, i))
+                
+        if needs_save:
+            save_memory({"entries": entries})
+        results.sort(key=lambda x: x[0], reverse=True)
+        return results
+    except Exception as e:
+        print(f"AGENT: Semantic search failed: {e}")
+        return []
+
+def _perform_keyword_search(query: str, entries: list, threshold: float, metadata_filter: dict) -> list:
+    """Helper for keyword-based search fallback."""
+    import re
+    def tokenize(t): return set(re.findall(r'\w+', t.lower()))
+    query_tokens = tokenize(query)
+    results = []
+    for i, entry in enumerate(entries):
+        if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
+            continue
+        entry_tokens = tokenize(entry.get("text", ""))
+        score = len(query_tokens.intersection(entry_tokens))
+        sim = min(1.0, score / max(1, len(query_tokens)))
+        if sim >= threshold:
+            results.append((sim, i))
+    results.sort(key=lambda x: x[0], reverse=True)
+    return results
+
 def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_filter: dict = None, context_window: int = 1) -> str:
     """Searches long-term memory using semantic search with fastembed, with a keyword fallback."""
     import os
-    # Mitigate OpenBLAS/threading issues in resource-constrained environments
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
+    # Mitigate OpenBLAS/threading issues
+    for env_var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]:
+        os.environ[env_var] = "1"
     
     if not query: return "Error: Query cannot be empty."
     memory = load_memory()
@@ -478,114 +524,64 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
     entries = memory["entries"]
 
     scored_results = []
-    
-    # Try semantic search ONLY if threshold > 0 and not explicitly bypassed
     if threshold > 0:
-        try:
-            # Check for explicitly disabling fastembed via env var for debugging/resource reasons
-            if os.getenv("DISABLE_FASTEMBED") == "1":
-                raise ImportError("FastEmbed explicitly disabled.")
-                
-            from fastembed import TextEmbedding
-            model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-            query_embedding = list(model.embed([query]))[0]
-            needs_save = False
-            for i, entry in enumerate(entries):
-                if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
-                    continue
-                doc_emb, created = _get_entry_embedding(model, entry)
-                if created: needs_save = True
-                sim = _compute_cosine_similarity(query_embedding, doc_emb)
-                if sim >= threshold: scored_results.append((sim, i))
-            if needs_save: save_memory(memory)
-            scored_results.sort(key=lambda x: x[0], reverse=True)
-        except Exception as e:
-            print(f"AGENT: Semantic search failed or bypassed ({e}), falling back to keyword search.")
-            scored_results = []
+        scored_results = _perform_semantic_search(query, entries, threshold, metadata_filter)
     
-    # Fallback to keyword search if no results or semantic search failed
     if not scored_results:
-        scored_results = []
-        import re
-        def tokenize(t): return set(re.findall(r'\w+', t.lower()))
-        query_tokens = tokenize(query)
-        for i, entry in enumerate(entries):
-            if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
-                continue
-            entry_tokens = tokenize(entry.get("text", ""))
-            score = len(query_tokens.intersection(entry_tokens))
-            sim = min(1.0, score / max(1, len(query_tokens)))
-            if sim >= threshold:
-                scored_results.append((sim, i))
-        scored_results.sort(key=lambda x: x[0], reverse=True)
+        scored_results = _perform_keyword_search(query, entries, threshold, metadata_filter)
 
     top_results = scored_results[:top_k]
     if not top_results:
-        if any(sim < threshold for sim, _ in scored_results) or not entries:
-            return f"No memory entries found above threshold {threshold}."
         return f"No memory entries found for query: {query}"
     return "\n---\n".join([_format_result_entry(i, sim, entries, context_window) for sim, i in top_results])
 
+def _chunk_text(t, max_chars=1500, overlap=200):
+    """Splits text into chunks with smart break points."""
+    if len(t) <= max_chars:
+        return [t]
+    chunks = []
+    start = 0
+    while start < len(t):
+        end = start + max_chars
+        if end >= len(t):
+            chunks.append(t[start:])
+            break
+        search_region = t[max(start, end-300):end]
+        break_point = -1
+        for separator in ["\n\n", "\n", ". ", "? ", "! "]:
+            idx = search_region.rfind(separator)
+            if idx != -1:
+                break_point = max(start, end - 300 + idx + len(separator))
+                break
+        if break_point == -1: break_point = end
+        chunks.append(t[start:break_point])
+        start = break_point - overlap
+    return chunks
+
 def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -> str:
-    """Adds a new text entry to long-term memory and pre-calculates its embedding.
-    Supports chunking for long texts."""
+    """Adds a new text entry to long-term memory with chunking support."""
     try:
         import time
         if not text: return "Error: Memory text cannot be empty."
-        
-        # Enhanced chunking logic: split by paragraph or sentence if possible
-        def chunk_text(t, max_chars=1500, overlap=200):
-            if len(t) <= max_chars:
-                return [t]
-            
-            chunks = []
-            start = 0
-            while start < len(t):
-                end = start + max_chars
-                if end >= len(t):
-                    chunks.append(t[start:])
-                    break
-                
-                # Try to find a paragraph break or sentence end in the overlap/last part
-                search_region = t[max(start, end-300):end]
-                break_point = -1
-                for separator in ["\n\n", "\n", ". ", "? ", "! "]:
-                    idx = search_region.rfind(separator)
-                    if idx != -1:
-                        break_point = max(start, end - 300 + idx + len(separator))
-                        break
-                
-                if break_point == -1:
-                    break_point = end # Fallback to hard split
-                
-                chunks.append(t[start:break_point])
-                start = break_point - overlap
-                if start < 0: start = break_point # Safety
-            return chunks
-
-        text_chunks = chunk_text(text)
+        text_chunks = _chunk_text(text)
         memory = load_memory()
-        if not isinstance(memory, dict): memory = {"entries": []}
-        if "entries" not in memory: memory["entries"] = []
+        if not isinstance(memory, dict) or "entries" not in memory:
+            memory = {"entries": []}
         
         added_count = 0
         last_tags = []
         for i, chunk in enumerate(text_chunks):
             chunk_metadata = (metadata or {}).copy()
             if len(text_chunks) > 1:
-                chunk_metadata["chunk"] = i
-                chunk_metadata["total_chunks"] = len(text_chunks)
+                chunk_metadata.update({"chunk": i, "total_chunks": len(text_chunks)})
             
             final_metadata = _apply_auto_tags_to_entry(chunk, chunk_metadata, auto_tag)
             last_tags = final_metadata.get("tags", [])
-            
-            entry = {
-                "text": chunk,
-                "embedding": None, # Skip embedding calculation for now to save resources
+            memory["entries"].append({
+                "text": chunk, "embedding": None,
                 "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 "metadata": final_metadata
-            }
-            memory["entries"].append(entry)
+            })
             added_count += 1
             
         save_memory(memory)

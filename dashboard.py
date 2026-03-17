@@ -81,6 +81,23 @@ HTML_TEMPLATE = """
                         <span class="stat-label">Flash Usage</span>
                         <span class="stat-value">{{ flash_usage }}/800</span>
                     </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Active Model</span>
+                        <span class="stat-value" style="font-size: 14px;">{{ active_model }}</span>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <form action="/switch_model" method="post" style="display: inline;">
+                        <input type="hidden" name="tier" value="pro">
+                        <button type="submit" style="background-color: #7c3aed; padding: 8px 16px; font-size: 13px;">Switch to Pro</button>
+                    </form>
+                    <form action="/switch_model" method="post" style="display: inline;">
+                        <input type="hidden" name="tier" value="flash">
+                        <button type="submit" style="background-color: #059669; padding: 8px 16px; font-size: 13px;">Switch to Flash</button>
+                    </form>
+                    <form action="/restart_agent" method="post" style="display: inline; margin-left: auto;">
+                        <button type="submit" style="background-color: #dc2626; padding: 8px 16px; font-size: 13px;">Restart Agent</button>
+                    </form>
                 </div>
             </div>
 
@@ -264,7 +281,41 @@ def index():
     pro, flash = get_usage_stats()
     cpu, mem = get_system_stats()
     chat_entries = load_chat()
-    return render_template_string(HTML_TEMPLATE, tasks=tasks, pro_usage=pro, flash_usage=flash, cpu=cpu, memory=mem, chat_entries=chat_entries)
+    
+    active_model = "Unknown"
+    if os.path.exists(os.path.join(AGENT_ROOT, "active_model.txt")):
+        with open(os.path.join(AGENT_ROOT, "active_model.txt"), "r") as f:
+            active_model = f.read().strip().split("-")[1].upper() # Simplified name
+            
+    return render_template_string(HTML_TEMPLATE, 
+                                tasks=tasks, 
+                                pro_usage=pro, 
+                                flash_usage=flash, 
+                                cpu=cpu, 
+                                memory=mem, 
+                                chat_entries=chat_entries,
+                                active_model=active_model)
+
+@app.route("/switch_model", methods=["POST"])
+def switch_model_route():
+    tier = request.form.get("tier")
+    model_map = {
+        "pro": "gemini-3.1-pro-preview",
+        "flash": "gemini-3-flash-preview"
+    }
+    if tier in model_map:
+        with open(os.path.join(AGENT_ROOT, "active_model.txt"), "w") as f:
+            f.write(model_map[tier])
+        # Signal restart
+        with open(os.path.join(AGENT_ROOT, "restart_signal.txt"), "w") as f:
+            f.write("model_switch")
+    return redirect(url_for("index"))
+
+@app.route("/restart_agent", methods=["POST"])
+def restart_agent_route():
+    with open(os.path.join(AGENT_ROOT, "restart_signal.txt"), "w") as f:
+        f.write("manual_restart")
+    return "Restart signal sent. The agent will reboot shortly. <a href='/'>Back to Dashboard</a>"
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
@@ -290,7 +341,7 @@ def api_logs():
 @app.route("/api/sys_logs")
 def api_sys_logs():
     content = ""
-    log_files = ["dashboard_stdout.txt", "dashboard_stderr.txt", "discord_bot_stdout.txt", "discord_bot_stderr.txt"]
+    log_files = ["dashboard_stdout.txt", "dashboard_stderr.txt", "discord_bot_stdout.txt", "discord_bot_stderr.txt", "dev_log.txt"]
     for log in log_files:
         if os.path.exists(log):
             try:

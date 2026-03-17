@@ -19,6 +19,7 @@ from file_tools.health_tools import check_code_health
 from file_tools.research_tools import deep_search
 from file_tools.communication_tools import reply_to_user
 from file_tools.reporting_tools import generate_status_report, run_test_suite
+from file_tools.backup_tools import backup_data
 
 REQUESTED_RESTART = False
 MODEL_CONFIG_FILE = "active_model.txt"
@@ -198,20 +199,33 @@ def _process_inbox(prompt):
     processing_path = "inbox_processing.txt"
     inbox_content = ""
     
-    if os.path.exists(inbox_path) and os.path.getsize(inbox_path) > 0:
-        try:
-            with open(inbox_path, "r") as f_in, open(processing_path, "a") as f_out:
-                f_out.write(f_in.read())
-            open(inbox_path, "w").close()
-        except Exception as e:
-            print(f"AGENT: Error consolidating inbox: {e}")
-            
-    if os.path.exists(processing_path):
+    # First, check if there's anything already in processing (from a previous crashed/interrupted run)
+    if os.path.exists(processing_path) and os.path.getsize(processing_path) > 0:
         try:
             with open(processing_path, "r") as f:
                 inbox_content = f.read().strip()
         except Exception:
             pass
+
+    # Then, consolidate new messages from inbox.txt
+    if os.path.exists(inbox_path) and os.path.getsize(inbox_path) > 0:
+        try:
+            with open(inbox_path, "r") as f_in:
+                new_messages = f_in.read()
+                
+            with open(processing_path, "a") as f_out:
+                f_out.write(new_messages)
+            
+            # Clear inbox ONLY after writing to processing
+            open(inbox_path, "w").close()
+            
+            # Update content for the current prompt
+            if inbox_content:
+                inbox_content += "\n" + new_messages.strip()
+            else:
+                inbox_content = new_messages.strip()
+        except Exception as e:
+            print(f"AGENT: Error consolidating inbox: {e}")
 
     if inbox_content:
         prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
@@ -245,10 +259,28 @@ def _check_and_send_daily_summary():
 
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
+    global REQUESTED_RESTART
     update_heartbeat()
     
+    # Check for external restart signals (from Dashboard)
+    if os.path.exists("restart_signal.txt"):
+        try:
+            with open("restart_signal.txt", "r") as f:
+                signal = f.read().strip()
+            print(f"AGENT: Received external restart signal: {signal}")
+            os.remove("restart_signal.txt")
+            REQUESTED_RESTART = True
+            return True
+        except Exception as e:
+            print(f"AGENT: Error reading restart signal: {e}")
+
     if loop_count % 10 == 0:
         check_background_processes()
+        
+    # Periodic backup every 50 cycles
+    if loop_count % 50 == 0:
+        print("AGENT: Performing periodic backup...")
+        backup_data()
         
     # Check for daily summary on first cycle of the day
     if loop_count == 1 or loop_count % 100 == 0:
