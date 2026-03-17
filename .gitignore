@@ -20,3 +20,5 @@ discord_bot_stderr.txt
 discord_bot_stdout.txt
 .exhaustion_log.txt
 write_test.txt
+heartbeat.txt
+.last_daily_summary.txt
