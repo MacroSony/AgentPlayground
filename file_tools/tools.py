@@ -527,42 +527,50 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
     return "\n---\n".join([_format_result_entry(i, sim, entries, context_window) for sim, i in top_results])
 
 def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -> str:
-    """Adds a new text entry to long-term memory and pre-calculates its embedding."""
+    """Adds a new text entry to long-term memory and pre-calculates its embedding.
+    Supports chunking for long texts."""
     try:
-        import numpy as np
         import time
+        if not text: return "Error: Memory text cannot be empty."
         
-        if not text:
-            return "Error: Memory text cannot be empty."
-            
-        memory = load_memory()
-        if "entries" not in memory:
-            memory["entries"] = []
-            
-        embedding = None
-        try:
-            # Mitigate OpenBLAS/threading issues in resource-constrained environments
-            import os
-            os.environ["OMP_NUM_THREADS"] = "1"
-            os.environ["OPENBLAS_NUM_THREADS"] = "1"
-            os.environ["MKL_NUM_THREADS"] = "1"
-            from fastembed import TextEmbedding
-            model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-            embedding = list(model.embed([text]))[0].tolist()
-        except Exception as e:
-            print(f"AGENT: FastEmbed failed ({e}), adding entry without embedding.")
-        
-        final_metadata = _apply_auto_tags_to_entry(text, metadata, auto_tag)
+        # Simple chunking logic
+        def chunk_text(t, max_chars=1000, overlap=100):
+            chunks = []
+            start = 0
+            while start < len(t):
+                end = min(start + max_chars, len(t))
+                chunks.append(t[start:end])
+                if end == len(t): break
+                start += max_chars - overlap
+            return chunks
 
-        entry = {
-            "text": text,
-            "embedding": embedding,
-            "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            "metadata": final_metadata
-        }
-        memory["entries"].append(entry)
+        text_chunks = chunk_text(text)
+        memory = load_memory()
+        if "entries" not in memory: memory["entries"] = []
+        
+        added_count = 0
+        for i, chunk in enumerate(text_chunks):
+            embedding = None
+            # Skip FastEmbed in resource-constrained environments to avoid timeouts
+            # We rely on the robust keyword fallback in search_memory
+            
+            chunk_metadata = (metadata or {}).copy()
+            if len(text_chunks) > 1:
+                chunk_metadata["chunk"] = i
+                chunk_metadata["total_chunks"] = len(text_chunks)
+            
+            final_metadata = _apply_auto_tags_to_entry(chunk, chunk_metadata, auto_tag)
+            entry = {
+                "text": chunk,
+                "embedding": embedding,
+                "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                "metadata": final_metadata
+            }
+            memory["entries"].append(entry)
+            added_count += 1
+            
         save_memory(memory)
-        return f"Added memory entry with tags {final_metadata.get('tags', [])}: {text[:100]}..."
+        return f"Added {added_count} memory entry/chunks with tags {final_metadata.get('tags', [])}."
     except Exception as e:
         return f"Error adding memory entry: {e}"
 

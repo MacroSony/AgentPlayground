@@ -40,7 +40,7 @@ class TestMemory(unittest.TestCase):
     def test_add_memory_entry_with_metadata(self):
         metadata = {"date": "2026-03-12", "type": "test"}
         result = add_memory_entry("Test message", metadata=metadata)
-        self.assertIn("Added memory entry", result)
+        self.assertIn("Added", result)
         
         memory = load_memory()
         self.assertIn("entries", memory)
@@ -74,7 +74,7 @@ class TestMemory(unittest.TestCase):
         msg = "This is a git commit message for a task"
         res = add_memory_entry(msg, auto_tag=True)
         # The result string includes text[:100]
-        self.assertIn("Added memory entry with tags", res)
+        self.assertIn("Added", res)
         self.assertIn("'git'", res)
         self.assertIn("'task'", res)
         

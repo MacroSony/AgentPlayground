@@ -85,6 +85,13 @@ HTML_TEMPLATE = """
             </div>
 
             <div class="card">
+                <h2>System Logs</h2>
+                <div class="chat-container" id="system-logs" style="height: 300px; font-size: 12px; background: #020617;">
+                    <pre id="logs-content" style="margin: 0; color: #94a3b8;"></pre>
+                </div>
+            </div>
+
+            <div class="card">
                 <h2>Communication</h2>
                 <div class="chat-container" id="chat-log">
                     {% for entry in chat_entries %}
@@ -168,9 +175,60 @@ HTML_TEMPLATE = """
             }
         }
         
-        // Poll for tasks more frequently
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const data = await response.json();
+                const logContainer = document.getElementById('chat-log');
+                
+                let newHtml = '';
+                for (const entry of data.entries) {
+                    if (entry.includes('Hoshi:')) {
+                        const parts = entry.split('Hoshi:', 1);
+                        newHtml += `<div class="chat-entry"><span class="timestamp">${parts[0]}</span><span class="hoshi-tag">Hoshi:</span>${entry.split('Hoshi:', 2)[1]}</div>`;
+                    } else if (entry.includes('User:')) {
+                        const parts = entry.split('User:', 1);
+                        newHtml += `<div class="chat-entry"><span class="timestamp">${parts[0]}</span><span class="user-tag">User:</span>${entry.split('User:', 2)[1]}</div>`;
+                    } else {
+                        newHtml += `<div class="chat-entry"><span class="system-tag">${entry}</span></div>`;
+                    }
+                }
+                
+                if (logContainer && logContainer.innerHTML !== newHtml) {
+                    const atBottom = logContainer.scrollHeight - logContainer.scrollTop <= logContainer.clientHeight + 10;
+                    logContainer.innerHTML = newHtml;
+                    if (atBottom) {
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch logs", e);
+            }
+        }
+
+        async function refreshSystemLogs() {
+            try {
+                const response = await fetch('/api/sys_logs');
+                const data = await response.json();
+                const logsContent = document.getElementById('logs-content');
+                const logsContainer = document.getElementById('system-logs');
+                
+                if (logsContent && logsContent.textContent !== data.content) {
+                    const atBottom = logsContainer.scrollHeight - logsContainer.scrollTop <= logsContainer.clientHeight + 10;
+                    logsContent.textContent = data.content;
+                    if (atBottom) {
+                        logsContainer.scrollTop = logsContainer.scrollHeight;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch system logs", e);
+            }
+        }
+
+        // Poll for updates
         setInterval(refreshTasks, 5000);
-        
+        setInterval(refreshLogs, 3000);
+        setInterval(refreshSystemLogs, 4000);
     </script>
 </body>
 </html>
@@ -224,6 +282,21 @@ def send_message():
 @app.route("/api/tasks")
 def api_tasks():
     return jsonify(load_tasks())
+
+@app.route("/api/logs")
+def api_logs():
+    return jsonify({"entries": [line.strip() for line in load_chat()]})
+
+@app.route("/api/sys_logs")
+def api_sys_logs():
+    content = ""
+    log_files = ["dashboard_stderr.txt", "discord_bot_stderr.txt"]
+    for log in log_files:
+        if os.path.exists(log):
+            with open(log, "r") as f:
+                content += f"--- {log} ---\n"
+                content += "".join(f.readlines()[-20:]) + "\n"
+    return jsonify({"content": content})
 
 @app.route("/health")
 def health():

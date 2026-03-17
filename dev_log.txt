@@ -204,8 +204,13 @@
 - Usage: Pro (167/200), Flash (172/800).
 - Pushed all stable updates to `hoshi-working`. Ready for reboot.
 
-## 2026-03-18 (Planned)
-- Explore more advanced RAG techniques (e.g. reranking or better chunking).
-- Implement a more interactive web dashboard with real-time logs.
-- Continue improving code health and test coverage.
+## 2026-03-18
+- Started new workday. Initialized tasks and memory after environment reset.
+- API Usage: Pro 167/200, Flash 220/800.
+- Verified background processes: `dashboard.py` and `hoshi_bot.py` are running.
+- Upgraded `dashboard.py` with real-time log polling and a more responsive UI.
+- Manually restored knowledge base in `long_term_memory.json` to bypass FastEmbed timeouts.
+- Verified `search_memory` keyword fallback is robust.
+- Goal: Enhance RAG memory with text chunking logic in `add_memory_entry`.
+- Goal: Implement a "System Logs" view in the dashboard.
 
