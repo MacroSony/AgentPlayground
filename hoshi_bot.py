@@ -108,20 +108,33 @@ class HoshiBot(discord.Client):
                 await message.channel.send(f"Failed to generate report: {e}")
             return
 
-        if '!research' in message.content:
-            query = message.content.replace('!research', '').replace(f'<@{self.user.id}>', '').strip()
+        if '!research' in message.content or '!deep_search' in message.content:
+            cmd = '!research' if '!research' in message.content else '!deep_search'
+            query = message.content.replace(cmd, '').replace(f'<@{self.user.id}>', '').strip()
             if not query:
-                await message.channel.send("Please provide a research query. Usage: `!research <topic>`")
+                await message.channel.send(f"Please provide a research query. Usage: `{cmd} <topic>`")
                 return
             
-            await message.channel.send(f"🔍 Starting deep research on: **{query}**... This may take a few minutes.")
+            # Inform user about depth/breadth
+            await message.channel.send(f"🔍 Starting deep research on: **{query}**... (This takes 1-3 minutes)")
+            
+            # Create a simple "thinking" reaction or status
             try:
-                from file_tools.research_tools import deep_search
-                report = deep_search(query)
-                for i in range(0, len(report), 1900):
-                    await message.channel.send(report[i:i+1900])
+                async with message.channel.typing():
+                    from file_tools.research_tools import deep_search
+                    # Limit depth for Discord requests to avoid long blocking
+                    report = await asyncio.to_thread(deep_search, query, max_depth=2, breadths=2)
+                    
+                    if len(report) > 2000:
+                        # Send as file if too long
+                        with open("research_report.md", "w") as f:
+                            f.write(report)
+                        await message.channel.send(f"Report for **{query}** is ready:", file=discord.File("research_report.md"))
+                    else:
+                        await message.channel.send(f"### Research Report: {query}\n\n{report}")
             except Exception as e:
-                await message.channel.send(f"Deep search failed: {e}")
+                logger.error(f"Deep search failed: {e}")
+                await message.channel.send(f"Deep search failed: {str(e)[:1000]}")
             return
 
         # Log the message to inbox.txt for the cognitive loop to process

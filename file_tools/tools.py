@@ -533,36 +533,55 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
         import time
         if not text: return "Error: Memory text cannot be empty."
         
-        # Simple chunking logic
-        def chunk_text(t, max_chars=1000, overlap=100):
+        # Enhanced chunking logic: split by paragraph or sentence if possible
+        def chunk_text(t, max_chars=1500, overlap=200):
+            if len(t) <= max_chars:
+                return [t]
+            
             chunks = []
             start = 0
             while start < len(t):
-                end = min(start + max_chars, len(t))
-                chunks.append(t[start:end])
-                if end == len(t): break
-                start += max_chars - overlap
+                end = start + max_chars
+                if end >= len(t):
+                    chunks.append(t[start:])
+                    break
+                
+                # Try to find a paragraph break or sentence end in the overlap/last part
+                search_region = t[max(start, end-300):end]
+                break_point = -1
+                for separator in ["\n\n", "\n", ". ", "? ", "! "]:
+                    idx = search_region.rfind(separator)
+                    if idx != -1:
+                        break_point = max(start, end - 300 + idx + len(separator))
+                        break
+                
+                if break_point == -1:
+                    break_point = end # Fallback to hard split
+                
+                chunks.append(t[start:break_point])
+                start = break_point - overlap
+                if start < 0: start = break_point # Safety
             return chunks
 
         text_chunks = chunk_text(text)
         memory = load_memory()
+        if not isinstance(memory, dict): memory = {"entries": []}
         if "entries" not in memory: memory["entries"] = []
         
         added_count = 0
+        last_tags = []
         for i, chunk in enumerate(text_chunks):
-            embedding = None
-            # Skip FastEmbed in resource-constrained environments to avoid timeouts
-            # We rely on the robust keyword fallback in search_memory
-            
             chunk_metadata = (metadata or {}).copy()
             if len(text_chunks) > 1:
                 chunk_metadata["chunk"] = i
                 chunk_metadata["total_chunks"] = len(text_chunks)
             
             final_metadata = _apply_auto_tags_to_entry(chunk, chunk_metadata, auto_tag)
+            last_tags = final_metadata.get("tags", [])
+            
             entry = {
                 "text": chunk,
-                "embedding": embedding,
+                "embedding": None, # Skip embedding calculation for now to save resources
                 "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 "metadata": final_metadata
             }
@@ -570,19 +589,20 @@ def add_memory_entry(text: str, metadata: dict = None, auto_tag: bool = False) -
             added_count += 1
             
         save_memory(memory)
-        return f"Added {added_count} memory entry/chunks with tags {final_metadata.get('tags', [])}."
+        return f"Added {added_count} memory chunks. Tags: {last_tags}"
     except Exception as e:
         return f"Error adding memory entry: {e}"
 
 def _apply_auto_tags_to_entry(text: str, metadata: dict, auto_tag: bool) -> dict:
-    final_metadata = metadata or {}
+    final_metadata = (metadata or {}).copy()
     if auto_tag:
         tags = set(final_metadata.get("tags", []))
         keywords = {
             "task": ["task", "todo", "done", "status"],
-            "project": ["project", "refactor", "tool", "loop"],
-            "tech": ["ai", "gemini", "python", "scraping", "memory"],
-            "git": ["git", "branch", "commit", "push", "pull"]
+            "project": ["project", "refactor", "tool", "loop", "capability"],
+            "tech": ["ai", "gemini", "python", "scraping", "memory", "rag", "fastembed"],
+            "git": ["git", "branch", "commit", "push", "pull"],
+            "research": ["research", "search", "web", "deep_search", "information"]
         }
         text_lower = text.lower()
         for tag, keys in keywords.items():

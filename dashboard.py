@@ -290,12 +290,29 @@ def api_logs():
 @app.route("/api/sys_logs")
 def api_sys_logs():
     content = ""
-    log_files = ["dashboard_stderr.txt", "discord_bot_stderr.txt"]
+    log_files = ["dashboard_stdout.txt", "dashboard_stderr.txt", "discord_bot_stdout.txt", "discord_bot_stderr.txt"]
     for log in log_files:
         if os.path.exists(log):
-            with open(log, "r") as f:
-                content += f"--- {log} ---\n"
-                content += "".join(f.readlines()[-20:]) + "\n"
+            try:
+                with open(log, "r") as f:
+                    content += f"--- {log} ---\n"
+                    lines = f.readlines()
+                    content += "".join(lines[-25:]) + "\n\n"
+            except Exception as e:
+                content += f"Error reading {log}: {e}\n"
+    
+    # Add heartbeat/process info
+    import time
+    heartbeat_file = "heartbeat.txt"
+    if os.path.exists(heartbeat_file):
+        try:
+            with open(heartbeat_file, "r") as f:
+                ts = float(f.read().strip())
+                diff = time.time() - ts
+                content += f"--- SYSTEM HEARTBEAT ---\nLast active: {diff:.1f}s ago\n"
+        except Exception:
+            pass
+            
     return jsonify({"content": content})
 
 @app.route("/health")
