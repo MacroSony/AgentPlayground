@@ -219,12 +219,40 @@ def _process_inbox(prompt):
         
     return prompt
 
+def _check_and_send_daily_summary():
+    """Sends a daily status report to Discord if not sent today."""
+    try:
+        summary_file = ".last_daily_summary.txt"
+        current_date = time.strftime('%Y-%m-%d')
+        last_date = ""
+        if os.path.exists(summary_file):
+            with open(summary_file, "r") as f:
+                last_date = f.read().strip()
+                
+        if current_date != last_date:
+            print("AGENT: Sending automated daily summary to Discord...")
+            report = generate_status_report()
+            # Send the report in chunks if it's too long
+            chunk_size = 1900
+            for i in range(0, len(report), chunk_size):
+                send_discord_message(f"```markdown\n{report[i:i+chunk_size]}\n```")
+                time.sleep(1) # Rate limit protection
+                
+            with open(summary_file, "w") as f:
+                f.write(current_date)
+    except Exception as e:
+        print(f"AGENT: Error sending daily summary: {e}")
+
 def run_cycle(chat, loop_count):
     """Executes a single cognitive cycle."""
     update_heartbeat()
     
     if loop_count % 10 == 0:
         check_background_processes()
+        
+    # Check for daily summary on first cycle of the day
+    if loop_count == 1 or loop_count % 100 == 0:
+        _check_and_send_daily_summary()
         
     print(f"\n--- Cognitive Cycle {loop_count} ---")
     prompt = (
