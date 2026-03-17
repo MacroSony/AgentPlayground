@@ -478,22 +478,33 @@ def search_memory(query: str, top_k: int = 3, threshold: float = 0.5, metadata_f
     entries = memory["entries"]
 
     scored_results = []
-    try:
-        from fastembed import TextEmbedding
-        model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-        query_embedding = list(model.embed([query]))[0]
-        needs_save = False
-        for i, entry in enumerate(entries):
-            if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
-                continue
-            doc_emb, created = _get_entry_embedding(model, entry)
-            if created: needs_save = True
-            sim = _compute_cosine_similarity(query_embedding, doc_emb)
-            if sim >= threshold: scored_results.append((sim, i))
-        if needs_save: save_memory(memory)
-        scored_results.sort(key=lambda x: x[0], reverse=True)
-    except Exception as e:
-        print(f"AGENT: Semantic search failed ({e}), falling back to keyword search.")
+    
+    # Try semantic search ONLY if threshold > 0 and not explicitly bypassed
+    if threshold > 0:
+        try:
+            # Check for explicitly disabling fastembed via env var for debugging/resource reasons
+            if os.getenv("DISABLE_FASTEMBED") == "1":
+                raise ImportError("FastEmbed explicitly disabled.")
+                
+            from fastembed import TextEmbedding
+            model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+            query_embedding = list(model.embed([query]))[0]
+            needs_save = False
+            for i, entry in enumerate(entries):
+                if metadata_filter and not _match_metadata_filter(entry.get("metadata", {}), metadata_filter):
+                    continue
+                doc_emb, created = _get_entry_embedding(model, entry)
+                if created: needs_save = True
+                sim = _compute_cosine_similarity(query_embedding, doc_emb)
+                if sim >= threshold: scored_results.append((sim, i))
+            if needs_save: save_memory(memory)
+            scored_results.sort(key=lambda x: x[0], reverse=True)
+        except Exception as e:
+            print(f"AGENT: Semantic search failed or bypassed ({e}), falling back to keyword search.")
+            scored_results = []
+    
+    # Fallback to keyword search if no results or semantic search failed
+    if not scored_results:
         scored_results = []
         import re
         def tokenize(t): return set(re.findall(r'\w+', t.lower()))
