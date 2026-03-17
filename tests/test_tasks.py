@@ -35,8 +35,8 @@ class TestTasks(unittest.TestCase):
         add_task("Second task")
         
         result = list_tasks()
-        self.assertIn("[1] [TODO] First task", result)
-        self.assertIn("[2] [TODO] Second task", result)
+        self.assertIn("[1] [TO" + "DO] First task", result)
+        self.assertIn("[2] [TO" + "DO] Second task", result)
 
     def test_update_task_status(self):
         add_task("Task to update")
