@@ -291,12 +291,8 @@ def start_background_processes():
     except Exception as e:
         print(f"AGENT: Error starting background processes: {e}")
 
-def main():
-    print("AGENT: Booting cognitive loop...")
-    start_background_processes()
-    active_model = get_active_model_name()
-    
-    # Proactive check of usage to avoid immediate 429
+def _check_and_switch_model(active_model):
+    """Proactively checks usage and switches model if exhausted."""
     usage_text = get_usage()
     import re
     m_pro = re.search(r"Pro Tier: (\d+)", usage_text)
@@ -311,12 +307,42 @@ def main():
         print("AGENT: Pro tier exhausted. Proactively switching to Flash.")
         with open(MODEL_CONFIG_FILE, "w") as f:
             f.write(ALLOWED_MODELS["flash"])
-        active_model = ALLOWED_MODELS["flash"]
+        return ALLOWED_MODELS["flash"]
     elif flash_exhausted and active_model == ALLOWED_MODELS["flash"]:
         print("AGENT: Flash tier exhausted. Proactively switching to Pro.")
         with open(MODEL_CONFIG_FILE, "w") as f:
             f.write(ALLOWED_MODELS["pro"])
-        active_model = ALLOWED_MODELS["pro"]
+        return ALLOWED_MODELS["pro"]
+    return active_model
+
+def _handle_exhaustion(active_model):
+    """Handles rate limit exhaustion logic."""
+    exhaustion_file = ".exhaustion_log.txt"
+    current_time = time.time()
+    last_exhausted = 0
+    try:
+        if os.path.exists(exhaustion_file):
+            with open(exhaustion_file, "r") as f:
+                last_exhausted = float(f.read().strip())
+    except Exception:
+        pass
+    
+    if current_time - last_exhausted < 3600:
+        print("AGENT: Both models likely exhausted. Sleeping for 1 hour...")
+        time.sleep(3600)
+    else:
+        print("AGENT: Budget exhausted. Switching model...")
+        with open(exhaustion_file, "w") as f:
+            f.write(str(current_time))
+        if active_model == ALLOWED_MODELS["flash"]:
+            switch_model("pro")
+        else:
+            switch_model("flash")
+
+def main():
+    print("AGENT: Booting cognitive loop...")
+    start_background_processes()
+    active_model = _check_and_switch_model(get_active_model_name())
 
     print(f"AGENT: Active model: {active_model}")
 
@@ -335,28 +361,8 @@ def main():
             print(f"AGENT: Error: {error_str}")
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 if "SYSTEM OVERRIDE" in error_str:
-                    exhaustion_file = ".exhaustion_log.txt"
-                    current_time = time.time()
-                    last_exhausted = 0
-                    try:
-                        if os.path.exists(exhaustion_file):
-                            with open(exhaustion_file, "r") as f:
-                                last_exhausted = float(f.read().strip())
-                    except Exception:
-                        pass
-                    
-                    if current_time - last_exhausted < 3600:
-                        print("AGENT: Both models likely exhausted. Sleeping for 1 hour...")
-                        time.sleep(3600)
-                    else:
-                        print("AGENT: Budget exhausted. Switching model...")
-                        with open(exhaustion_file, "w") as f:
-                            f.write(str(current_time))
-                        if active_model == ALLOWED_MODELS["flash"]:
-                            switch_model("pro")
-                        else:
-                            switch_model("flash")
-                        return
+                    _handle_exhaustion(active_model)
+                    return
                 else:
                     print("AGENT: Rate limit hit (likely transient). Sleeping for 30 seconds...")
                     time.sleep(30)
