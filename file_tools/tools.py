@@ -635,9 +635,16 @@ def journal_status(summary: str) -> str:
         summary: A concise summary of recent accomplishments and status.
     """
     try:
-        from file_tools.tasks import list_tasks
+        from file_tools.tasks import list_tasks, archive_completed_tasks
+        from file_tools.communication_tools import reply_to_user
+        
+        archive_res = archive_completed_tasks()
         tasks = list_tasks()
-        entry = f"Status Report ({time.strftime('%Y-%m-%d %H:%M:%S')}):\n{summary}\n\nTasks:\n{tasks}"
+        entry = f"Status Report ({time.strftime('%Y-%m-%d %H:%M:%S')}):\n{summary}\n\nTasks:\n{tasks}\nArchive Status: {archive_res}"
+        
+        # Spontaneously notify the creator through the dashboard/local chat
+        reply_to_user(f"--- PROGRESS UPDATE ---\n{summary}\n\nTasks Status:\n{tasks}")
+        
         return add_memory_entry(entry, metadata={"type": "journal", "cycle": time.strftime('%Y-%m-%d')}, auto_tag=True)
     except Exception as e:
         return f"Error journaling status: {e}"

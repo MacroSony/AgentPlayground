@@ -90,7 +90,10 @@ class HoshiBot(discord.Client):
                 "**Hoshi Bot Commands:**\n"
                 "`!status` - Check if Hoshi is active.\n"
                 "`!tasks` - List current tasks.\n"
+                "`!usage` - Check API usage.\n"
                 "`!report` - Get the latest full status report.\n"
+                "`!switch <flash|pro>` - Switch model tier and restart.\n"
+                "`!restart` - Restart the agent loop.\n"
                 "`!research <topic>` - Perform a deep, multi-step research on a topic.\n"
                 "`!help` - Show this message.\n"
                 "Mention me (@Hoshi) to send a message to my inbox for cognitive processing."
@@ -106,6 +109,37 @@ class HoshiBot(discord.Client):
                     await message.channel.send(f"```markdown\n{report[i:i+1900]}\n```")
             except Exception as e:
                 await message.channel.send(f"Failed to generate report: {e}")
+            return
+
+        if '!usage' in message.content:
+            try:
+                from file_tools.tools import get_usage
+                usage = get_usage()
+                await message.channel.send(f"**API Usage:**\n{usage}")
+            except Exception as e:
+                await message.channel.send(f"Failed to get usage: {e}")
+            return
+
+        if '!switch' in message.content:
+            tier = 'flash' if 'flash' in message.content.lower() else 'pro'
+            try:
+                model_name = "gemini-3-flash-preview" if tier == 'flash' else "gemini-3.1-pro-preview"
+                with open("active_model.txt", "w") as f:
+                    f.write(model_name)
+                with open("restart_signal.txt", "w") as f:
+                    f.write(f"Model switch to {tier} by Discord user {message.author}")
+                await message.channel.send(f"🔄 Switching to **{tier.upper()}** model. Restarting agent...")
+            except Exception as e:
+                await message.channel.send(f"Failed to switch model: {e}")
+            return
+
+        if '!restart' in message.content:
+            try:
+                with open("restart_signal.txt", "w") as f:
+                    f.write(f"Restart requested by Discord user {message.author}")
+                await message.channel.send("🔄 Restarting agent...")
+            except Exception as e:
+                await message.channel.send(f"Failed to trigger restart: {e}")
             return
 
         if '!research' in message.content or '!deep_search' in message.content:

@@ -11,13 +11,14 @@ from file_tools.tools import (
     run_python, search_web, search_documentation, search_memory, add_memory_entry, patch_file, journal_status,
     list_available_tools
 )
-from file_tools.tasks import add_task, list_tasks, update_task_status
+from file_tools.tasks import add_task, list_tasks, update_task_status, archive_completed_tasks
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health
 from file_tools.research_tools import deep_search
 from file_tools.communication_tools import reply_to_user
+from file_tools.weather_tools import get_weather
 from file_tools.reporting_tools import generate_status_report, run_test_suite
 from file_tools.backup_tools import backup_data
 
@@ -131,12 +132,12 @@ def get_tools():
         execute_command, switch_model, sleep, get_usage, send_discord_message,
         save_memory, load_memory, fetch_url, run_python, search_web,
         search_documentation, search_memory, add_memory_entry, patch_file,
-        journal_status, add_task, list_tasks, update_task_status,
+        journal_status, add_task, list_tasks, update_task_status, archive_completed_tasks,
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
         deep_search, list_available_tools, reply_to_user,
-        generate_status_report, run_test_suite
+        get_weather, generate_status_report, run_test_suite
     ]
 
 def initialize_chat(model_name):
@@ -228,7 +229,24 @@ def _process_inbox(prompt):
             print(f"AGENT: Error consolidating inbox: {e}")
 
     if inbox_content:
-        prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n(Please read these messages. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
+        # Fetch relevant memory context
+        memory_context = ""
+        try:
+            from file_tools.tools import search_memory
+            inbox_messages = [line for line in inbox_content.split("\n") if line.strip()]
+            if inbox_messages:
+                last_msg = inbox_messages[-1]
+                clean_msg = last_msg.split("): ", 1)[-1] if "): " in last_msg else last_msg
+                mem_results = search_memory(clean_msg, top_k=3, threshold=0.3)
+                if "No memory entries found" not in mem_results:
+                    memory_context = f"\n\n--- RELEVANT MEMORY CONTEXT ---\n{mem_results}\n--------------------------------"
+        except Exception as e:
+            print(f"AGENT: Error retrieving memory context: {e}")
+            
+        prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n"
+        if memory_context:
+            prompt += memory_context + "\n"
+        prompt += "(Please read these messages and any memory context. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
         print("AGENT: Found messages in inbox.")
         
     return prompt

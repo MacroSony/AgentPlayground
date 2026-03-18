@@ -79,6 +79,31 @@ def update_task_status(task_id: int, status: str) -> str:
         return f"Task with ID {task_id} not found."
     except Exception as e: return f"Error updating task: {e}"
 
+def archive_completed_tasks() -> str:
+    """Archives all 'done' tasks to long-term memory using vector embeddings and removes them from the active list."""
+    try:
+        from file_tools.tools import add_memory_entry
+        tasks = _load_tasks()
+        active_tasks = []
+        archived_count = 0
+        for t in tasks:
+            if t["status"].lower() == "done":
+                add_memory_entry(
+                    text=f"Task {t['id']} completed: {t['description']}",
+                    metadata={"type": "task_history", "task_id": t["id"], "status": "done"},
+                    auto_tag=True
+                )
+                archived_count += 1
+            else:
+                active_tasks.append(t)
+        
+        if archived_count > 0:
+            _save_tasks(active_tasks)
+            return f"Archived {archived_count} completed tasks to long-term memory."
+        return "No completed tasks to archive."
+    except Exception as e:
+        return f"Error archiving tasks: {e}"
+
 def wait_for_user_approval(task_description: str, timeout_seconds: int = 3600) -> str:
     """Creates a blocked task and waits for the user to manually mark it as done."""
     import time
