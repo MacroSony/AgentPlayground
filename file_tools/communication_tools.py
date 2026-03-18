@@ -17,7 +17,7 @@ def reply_to_user(message: str, discord_channel_id: str = None) -> str:
         with open(CHAT_LOG, "a") as f:
             f.write(f"[{timestamp}] Hoshi: {message}\n")
             
-        if discord_channel_id:
+        if discord_channel_id and str(discord_channel_id).lower() != "none":
             with open(DISCORD_OUTBOX, "a") as f:
                 entry = json.dumps({"channel_id": discord_channel_id, "message": message})
                 f.write(entry + "\n")

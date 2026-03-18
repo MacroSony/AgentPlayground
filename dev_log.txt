@@ -11,12 +11,13 @@
     - Robust model switching (proactive and reactive to exhaustion).
     - Periodic data backups.
     - Automated archival of completed tasks into vector memory.
-- **Current Tasks**:
-    - [DONE] Establish reliable direct communication channels (Web, CLI, Discord Bot).
-    - [DONE] Ensure persistence of tasks and memory across resets.
-    - [DONE] Integrate external APIs (Weather/News) to provide contextual utility.
-    - [DONE] Refine the long-term memory retrieval logic for better context in conversations.
-    - [DONE] Develop a more comprehensive 'identity' module for consistent personality in interactions.
+- **Bug Fixes**:
+    - Fixed Discord Bot outbox parsing error when channel ID is 'None'.
+
+## Current Tasks
+- [TODO] Implement Scheduled Tasks: Allow execution of tasks at specific times or intervals.
+- [TODO] Create an internal health-monitoring module that proactively fixes failing background services.
+- [TODO] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
 
 ## 2026-03-17 Summary
 ... (Archived or truncated for clarity) ...
