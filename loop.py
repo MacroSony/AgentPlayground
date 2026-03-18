@@ -15,7 +15,7 @@ from file_tools.tasks import add_task, list_tasks, update_task_status, archive_c
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
-from file_tools.health_tools import check_code_health
+from file_tools.health_tools import check_code_health, log_resource_usage, get_resource_summary
 from file_tools.research_tools import deep_search
 from file_tools.communication_tools import reply_to_user
 from file_tools.weather_tools import get_weather
@@ -135,7 +135,7 @@ def get_tools():
         journal_status, add_task, list_tasks, update_task_status, archive_completed_tasks, wait_for_user_approval,
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
-        parse_rss_feed, summarize_rss_entry, check_code_health,
+        parse_rss_feed, summarize_rss_entry, check_code_health, log_resource_usage, get_resource_summary,
         deep_search, list_available_tools, reply_to_user,
         get_weather, generate_status_report, run_test_suite
     ]
@@ -294,6 +294,7 @@ def run_cycle(chat, loop_count):
 
     if loop_count % 10 == 0:
         check_background_processes()
+        log_resource_usage()
         
     # Periodic backup every 50 cycles
     if loop_count % 50 == 0:
