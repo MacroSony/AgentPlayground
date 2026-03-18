@@ -11,7 +11,7 @@ from file_tools.tools import (
     run_python, search_web, search_documentation, search_memory, add_memory_entry, patch_file, journal_status,
     list_available_tools
 )
-from file_tools.tasks import add_task, list_tasks, update_task_status, archive_completed_tasks
+from file_tools.tasks import add_task, list_tasks, update_task_status, archive_completed_tasks, wait_for_user_approval
 from file_tools.git_tools import git_status, git_checkout, git_commit, git_push, git_pull
 from file_tools.ast_tools import analyze_python_file, summarize_project, find_definition
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
@@ -132,7 +132,7 @@ def get_tools():
         execute_command, switch_model, sleep, get_usage, send_discord_message,
         save_memory, load_memory, fetch_url, run_python, search_web,
         search_documentation, search_memory, add_memory_entry, patch_file,
-        journal_status, add_task, list_tasks, update_task_status, archive_completed_tasks,
+        journal_status, add_task, list_tasks, update_task_status, archive_completed_tasks, wait_for_user_approval,
         git_status, git_checkout, git_commit, git_push, git_pull,
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health,
