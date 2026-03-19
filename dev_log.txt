@@ -14,7 +14,7 @@
 - [DONE] Fix "Recent Activity" missing from status reports.
 - [DONE] Improve reactivity to messages in the cognitive loop.
 - [DONE] Deepen context awareness by injecting recent history into the cognitive prompt.
-- [TODO] Implement a sentiment trend visualization or summary in the Dashboard.
+- [DONE] Implement a sentiment trend visualization or summary in the Dashboard.
 - [TODO] Explore transitioning to a more integrated Discord bot architecture (Slash commands).
 
 ## 2026-03-18 Summary

@@ -32,12 +32,20 @@ class HoshiBot(discord.Client):
                         if not line.strip(): continue
                         try:
                             data = json.loads(line)
-                            channel_id = int(data["channel_id"])
+                            channel_id_raw = data.get("channel_id")
+                            if str(channel_id_raw).lower() == "none" or not channel_id_raw:
+                                channel_id = None
+                            else:
+                                channel_id = int(channel_id_raw)
                             msg = data["message"]
-                            channel = self.get_channel(channel_id) or await self.fetch_channel(channel_id)
-                            if channel:
-                                for i in range(0, len(msg), 1900):
-                                    await channel.send(msg[i:i+1900])
+                            
+                            if channel_id:
+                                channel = self.get_channel(channel_id) or await self.fetch_channel(channel_id)
+                                if channel:
+                                    for i in range(0, len(msg), 1900):
+                                        await channel.send(msg[i:i+1900])
+                            else:
+                                logger.warning(f"Skipping outbox message due to missing channel ID: {msg[:50]}...")
                         except Exception as e:
                             logger.error(f"Failed to send from outbox: {e}")
             await asyncio.sleep(2)

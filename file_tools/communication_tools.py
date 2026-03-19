@@ -148,16 +148,15 @@ def reply_to_user(message: str, discord_channel_id: str = None) -> str:
         with open(CHAT_LOG, "a") as f:
             f.write(f"[{timestamp}] Hoshi: {message}\n")
             
-        if discord_channel_id and str(discord_channel_id).lower() != "none":
-            # Check if it's already a JSON string (some tools might pass it)
-            if not isinstance(message, str):
-                msg_to_send = str(message)
-            else:
-                msg_to_send = message
-                
-            with open(DISCORD_OUTBOX, "a") as f:
-                entry = json.dumps({"channel_id": str(discord_channel_id), "message": msg_to_send})
-                f.write(entry + "\n")
+        # Check if it's already a JSON string (some tools might pass it)
+        if not isinstance(message, str):
+            msg_to_send = str(message)
+        else:
+            msg_to_send = message
+            
+        with open(DISCORD_OUTBOX, "a") as f:
+            entry = json.dumps({"channel_id": str(discord_channel_id) if discord_channel_id else "None", "message": msg_to_send})
+            f.write(entry + "\n")
                 
         # Also log to a dedicated sentiment file if needed, or just append to chat_log
         return "Reply sent successfully."
