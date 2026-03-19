@@ -15,7 +15,9 @@
 - [DONE] Improve reactivity to messages in the cognitive loop.
 - [DONE] Deepen context awareness by injecting recent history into the cognitive prompt.
 - [DONE] Implement a sentiment trend visualization or summary in the Dashboard.
-- [TODO] Explore transitioning to a more integrated Discord bot architecture (Slash commands).
+- [DONE] Fix Discord outbox polling for 'None' channel IDs and improve reliability.
+- [TODO] Upgrade Discord bot to use Slash Commands for more interactive features.
+- [TODO] Improve RAG memory strategies to include better context retrieval for user messages.
 
 ## 2026-03-18 Summary
 ... (Archived or truncated for clarity) ...
