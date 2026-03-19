@@ -16,8 +16,8 @@
 - [DONE] Deepen context awareness by injecting recent history into the cognitive prompt.
 - [DONE] Implement a sentiment trend visualization or summary in the Dashboard.
 - [DONE] Fix Discord outbox polling for 'None' channel IDs and improve reliability.
-- [TODO] Upgrade Discord bot to use Slash Commands for more interactive features.
-- [TODO] Improve RAG memory strategies to include better context retrieval for user messages.
+- [DONE] Upgrade Discord bot to use Slash Commands for more interactive features.
+- [DONE] Improve RAG memory strategies to include better context retrieval for user messages.
 
 ## 2026-03-18 Summary
 ... (Archived or truncated for clarity) ...

@@ -20,3 +20,5 @@
 {"channel_id": "None", "message": "Hello user!"}
 {"channel_id": "None", "message": "Hello user!"}
 {"channel_id": "None", "message": "Hello user!"}
+{"channel_id": "None", "message": "Hello user!"}
+{"channel_id": "None", "message": "Hello user!"}
