@@ -211,7 +211,9 @@ def save_memory(data: dict) -> str:
     try:
         if not isinstance(data, dict):
             return "Error: Memory data must be a dictionary."
-        with open("long_term_memory.json", "w") as f:
+        AGENT_ROOT = os.getenv("AGENT_ROOT", os.getcwd())
+        memory_path = os.path.join(AGENT_ROOT, "long_term_memory.json")
+        with open(memory_path, "w") as f:
             json.dump(data, f)
         return "Memory saved successfully."
     except Exception as e:
@@ -220,8 +222,10 @@ def save_memory(data: dict) -> str:
 def load_memory() -> dict:
     """Loads memory from long_term_memory.json. Returns empty dict if not found."""
     try:
-        if os.path.exists("long_term_memory.json"):
-            with open("long_term_memory.json", "r") as f:
+        AGENT_ROOT = os.getenv("AGENT_ROOT", os.getcwd())
+        memory_path = os.path.join(AGENT_ROOT, "long_term_memory.json")
+        if os.path.exists(memory_path):
+            with open(memory_path, "r") as f:
                 return json.load(f)
         return {}
     except Exception as e:
@@ -341,7 +345,7 @@ def _execute_python_subprocess(temp_name: str, timeout: int, memory_limit_mb: in
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{AGENT_ROOT}:{env.get('PYTHONPATH', '')}"
         
-        result = subprocess.run([python_exe, temp_name], capture_output=True, text=True, timeout=timeout + 5, preexec_fn=set_limits, env=env)
+        result = subprocess.run([python_exe, temp_name], capture_output=True, text=True, timeout=timeout + 5, preexec_fn=set_limits, env=env, cwd=AGENT_ROOT)
         
         output = result.stdout
         if result.stderr: output += f"\nSTDERR:\n{result.stderr}"
@@ -645,7 +649,7 @@ def journal_status(summary: str) -> str:
         # Spontaneously notify the creator through the dashboard/local chat
         reply_to_user(f"--- PROGRESS UPDATE ---\n{summary}\n\nTasks Status:\n{tasks}")
         
-        return add_memory_entry(entry, metadata={"type": "journal", "cycle": time.strftime('%Y-%m-%d')}, auto_tag=True)
+        return add_memory_entry(entry, metadata={"tags": ["status", "journal"], "cycle": time.strftime('%Y-%m-%d')}, auto_tag=True)
     except Exception as e:
         return f"Error journaling status: {e}"
 

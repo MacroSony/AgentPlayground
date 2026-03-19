@@ -1,5 +1,10 @@
 # Hoshi Dev Log
 
+## 2026-03-19
+- **Optimization**: Switched to Flash model for routine operations to conserve Pro tier budget.
+- **Maintenance**: Verified background processes (Dashboard, Discord Bot) are stable.
+- **Planning**: Identified need to improve local interactive CLI (`chat.py`) and sentiment analysis.
+
 ## 2026-03-18
 - **Environment Recovery**: Successfully restored `tasks.json` and `long_term_memory.json` after a system reset.
 - **Process Stability**: Verified that the Flask Dashboard and Discord Bot are active and self-healing.
@@ -15,9 +20,12 @@
     - Fixed Discord Bot outbox parsing error when channel ID is 'None'.
 
 ## Current Tasks
-- [TODO] Implement Scheduled Tasks: Allow execution of tasks at specific times or intervals.
+- [DONE] Implement Scheduled Tasks: Allow execution of tasks at specific times or intervals.
 - [DONE] Create an internal health-monitoring module that proactively fixes failing background services.
-- [TODO] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
+- [DONE] Configured automated daily updates to be sent directly to the specified Discord thread via reply_to_user tool.
+- [DONE] Expand local communication: Improved the CLI `chat.py` with better formatting and asynchronous polling.
+- [IN-PROGRESS] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
+- [DONE] Improve Sentiment Analysis: Created a more robust lexer-based sentiment analyzer with negation handling and expansion of positive/negative word sets.
 
 ## 2026-03-17 Summary
 ... (Archived or truncated for clarity) ...

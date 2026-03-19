@@ -1,0 +1,86 @@
+[
+  {
+    "timestamp": "2026-03-19 00:40:16",
+    "user": "test_user",
+    "message": "You are doing an awesome job!",
+    "sentiment": "positive"
+  },
+  {
+    "timestamp": "2026-03-19 01:45:30",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:46:12",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:47:04",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:47:54",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:48:51",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:49:54",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:50:41",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:51:34",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:52:26",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:53:21",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:54:24",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:55:18",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  },
+  {
+    "timestamp": "2026-03-19 01:56:15",
+    "user": "macrosony",
+    "message": "\u725b\u903c\uff01Note that the \"Recent Activity\" part in the daily summary is not displaying any content, check if it is broken or truncated. Also investigate possibilities to trigger cognitive cycle when receiving message to make yourself more reactive to messages and requests.",
+    "sentiment": "negative"
+  }
+]

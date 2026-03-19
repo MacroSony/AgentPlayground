@@ -66,10 +66,24 @@ def _append_health_status(report: list):
 def _append_recent_activity(report: list):
     report.append("\n## Recent Activity (from Memory)")
     memory = load_memory()
+    if not memory:
+        report.append("Memory is empty or could not be loaded.")
+        return
+        
     entries = memory.get("entries", [])
+    if not entries:
+        report.append("No entries found in memory.")
+        return
+        
     status_entries = [e for e in entries if "status" in e.get("metadata", {}).get("tags", [])]
+    if not status_entries:
+        report.append(f"No status entries found (Total entries: {len(entries)}).")
+        # Try any entries if no status entries
+        status_entries = entries[-3:]
+    
     for entry in status_entries[-3:]:
-        ts = entry.get("metadata", {}).get("timestamp", "unknown")
+        metadata = entry.get("metadata", {})
+        ts = metadata.get("timestamp") or entry.get("timestamp", "unknown")
         text = entry.get("text", "")
         summary = text[:200] + "..." if len(text) > 200 else text
         report.append(f"- [{ts}] {summary}")

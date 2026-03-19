@@ -17,7 +17,8 @@ from file_tools.ast_tools import analyze_python_file, summarize_project, find_de
 from file_tools.rss_tools import parse_rss_feed, summarize_rss_entry
 from file_tools.health_tools import check_code_health, log_resource_usage, get_resource_summary
 from file_tools.research_tools import deep_search
-from file_tools.communication_tools import reply_to_user
+from file_tools.schedule_tools import add_scheduled_task, list_scheduled_tasks, remove_scheduled_task, check_and_trigger_scheduled_tasks
+from file_tools.communication_tools import reply_to_user, log_interaction
 from file_tools.weather_tools import get_weather
 from file_tools.reporting_tools import generate_status_report, run_test_suite
 from file_tools.backup_tools import backup_data
@@ -137,7 +138,8 @@ def get_tools():
         analyze_python_file, summarize_project, find_definition,
         parse_rss_feed, summarize_rss_entry, check_code_health, log_resource_usage, get_resource_summary,
         deep_search, list_available_tools, reply_to_user,
-        get_weather, generate_status_report, run_test_suite
+        get_weather, generate_status_report, run_test_suite,
+        add_scheduled_task, list_scheduled_tasks, remove_scheduled_task
     ]
 
 def initialize_chat(model_name):
@@ -229,6 +231,19 @@ def _process_inbox(prompt):
             print(f"AGENT: Error consolidating inbox: {e}")
 
     if inbox_content:
+        # Log interactions and analyze sentiment
+        for line in inbox_content.split("\n"):
+            if line.strip():
+                if "LOCAL_USER: " in line:
+                    log_interaction("local", line.replace("LOCAL_USER: ", "").strip())
+                elif "DISCORD_USER [" in line:
+                    import re
+                    match = re.search(r"DISCORD_USER \[(.*?)\]", line)
+                    if match:
+                        user = match.group(1)
+                        content = line.split("): ", 1)[-1] if "): " in line else line
+                        log_interaction(user, content)
+
         # Fetch relevant memory context
         memory_context = ""
         try:
@@ -267,7 +282,7 @@ def _check_and_send_daily_summary():
             # Send the report in chunks if it's too long
             chunk_size = 1900
             for i in range(0, len(report), chunk_size):
-                send_discord_message(f"```markdown\n{report[i:i+chunk_size]}\n```")
+                reply_to_user(f"```markdown\n{report[i:i+chunk_size]}\n```", discord_channel_id="1483740722652778496")
                 time.sleep(1) # Rate limit protection
                 
             with open(summary_file, "w") as f:
@@ -304,6 +319,9 @@ def run_cycle(chat, loop_count):
     # Check for daily summary on first cycle of the day
     if loop_count == 1 or loop_count % 100 == 0:
         _check_and_send_daily_summary()
+        
+    # Check for scheduled tasks
+    check_and_trigger_scheduled_tasks()
         
     print(f"\n--- Cognitive Cycle {loop_count} ---")
     prompt = (
@@ -426,13 +444,25 @@ def main():
     chat = initialize_chat(active_model)
     loop_count = 0
     
+    import select
+    inbox_path = "inbox.txt"
+    
     while True:
         loop_count += 1
         try:
             if run_cycle(chat, loop_count):
                 print("AGENT: Restart requested. Exiting...")
                 return
-            time.sleep(10)
+            
+            # Smart Sleep: Wait up to 60 seconds OR until inbox.txt is modified
+            print("AGENT: Idle. Monitoring inbox for activity...")
+            start_wait = time.time()
+            max_wait = 60
+            while time.time() - start_wait < max_wait:
+                if os.path.exists(inbox_path) and os.path.getsize(inbox_path) > 0:
+                    print("AGENT: New message detected! Triggering cycle...")
+                    break
+                time.sleep(2)
         except Exception as e:
             _handle_loop_error(e, active_model)
 

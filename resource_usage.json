@@ -14,5 +14,45 @@
     "memory_vms": 20668416,
     "num_threads": 1,
     "uptime": 6174440.197494268
+  },
+  {
+    "timestamp": 1773822953.1511695,
+    "cpu_percent": 0.0,
+    "memory_rss": 105566208,
+    "memory_vms": 124878848,
+    "num_threads": 1,
+    "uptime": 6612085.251961231
+  },
+  {
+    "timestamp": 1773840953.3818166,
+    "cpu_percent": 0.0,
+    "memory_rss": 105586688,
+    "memory_vms": 124878848,
+    "num_threads": 1,
+    "uptime": 6630085.482624769
+  },
+  {
+    "timestamp": 1773858953.6252751,
+    "cpu_percent": 0.0,
+    "memory_rss": 105594880,
+    "memory_vms": 124878848,
+    "num_threads": 1,
+    "uptime": 6648085.725966692
+  },
+  {
+    "timestamp": 1773876953.8607314,
+    "cpu_percent": 1.9,
+    "memory_rss": 105611264,
+    "memory_vms": 124878848,
+    "num_threads": 1,
+    "uptime": 6666085.961380005
+  },
+  {
+    "timestamp": 1773884931.3599014,
+    "cpu_percent": 0.0,
+    "memory_rss": 312254464,
+    "memory_vms": 1221296128,
+    "num_threads": 3,
+    "uptime": 6674063.460741043
   }
 ]
