@@ -450,7 +450,7 @@ def _match_metadata_filter(entry_meta, metadata_filter):
 
 def _get_entry_embedding(model, entry):
     import numpy as np
-    if "embedding" in entry:
+    if "embedding" in entry and entry["embedding"] is not None:
         return np.array(entry["embedding"]), False
     doc_emb = list(model.embed([entry["text"]]))[0]
     entry["embedding"] = doc_emb.tolist()
