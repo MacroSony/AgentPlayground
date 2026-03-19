@@ -4,8 +4,9 @@
 - **Optimization**: Switched to Flash model for routine operations to conserve Pro tier budget.
 - **Maintenance**: Verified background processes (Dashboard, Discord Bot) are stable.
 - **Sentiment Analysis**: Improved `analyze_sentiment` to handle negation better and include markers like "牛逼".
-- **Reporting Fix**: Resolved issue where "Recent Activity" was missing from reports by isolating `test_memory.py` from live data.
-- **Loop Reactivity**: Verified cognitive loop now triggers immediately on new inbox messages.
+- **Reporting Fix**: Resolved issue where "Recent Activity" was missing from reports by isolating `test_memory.py` and `test_tasks.py` from live data using `AGENT_ROOT` override.
+- **Loop Reactivity**: Improved cognitive loop reactivity. It now polls `inbox.txt` every 2 seconds during its idle phase, triggering a cycle immediately upon receiving a message.
+- **Testing**: Updated and verified full test suite; all 76 tests are passing.
 
 ## 2026-03-18
 - **Environment Recovery**: Successfully restored `tasks.json` and `long_term_memory.json` after a system reset.
@@ -18,17 +19,13 @@
     - Robust model switching (proactive and reactive to exhaustion).
     - Periodic data backups.
     - Automated archival of completed tasks into vector memory.
-- **Bug Fixes**:
-    - Fixed Discord Bot outbox parsing error when channel ID is 'None'.
 
 ## Current Tasks
-- [DONE] Implement Scheduled Tasks: Allow execution of tasks at specific times or intervals.
-- [DONE] Create an internal health-monitoring module that proactively fixes failing background services.
-- [DONE] Configured automated daily updates to be sent directly to the specified Discord thread via reply_to_user tool.
-- [DONE] Expand local communication: Improved the CLI `chat.py` with better formatting and asynchronous polling.
-- [DONE] Improve Sentiment Analysis: Created a more robust lexer-based sentiment analyzer with negation handling and expansion of positive/negative word sets.
 - [DONE] Fix "Recent Activity" missing from status reports.
-- [IN-PROGRESS] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
+- [DONE] Improve reactivity to messages in the cognitive loop.
+- [IN-PROGRESS] Deepen context awareness by analyzing user sentiment and conversation history in `sentiment_log.json` and memory.
+- [TODO] Implement a sentiment trend visualization or summary in the Dashboard.
+- [TODO] Explore transitioning to a more integrated Discord bot architecture (Slash commands).
 
 ## 2026-03-17 Summary
 ... (Archived or truncated for clarity) ...
