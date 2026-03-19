@@ -86,6 +86,26 @@ HTML_TEMPLATE = """
                         <span class="stat-value" style="font-size: 14px;">{{ active_model }}</span>
                     </div>
                 </div>
+
+                <div style="margin-top: 24px;">
+                    <h2>Sentiment Overview (Last 100)</h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="flex-grow: 1; height: 24px; background: #334155; border-radius: 12px; overflow: hidden; display: flex;">
+                            {% if sentiment.total > 0 %}
+                                <div style="width: {{ (sentiment.positive / sentiment.total * 100)|round }}%; background: #10b981;" title="Positive: {{ sentiment.positive }}"></div>
+                                <div style="width: {{ (sentiment.neutral / sentiment.total * 100)|round }}%; background: #64748b;" title="Neutral: {{ sentiment.neutral }}"></div>
+                                <div style="width: {{ (sentiment.negative / sentiment.total * 100)|round }}%; background: #f43f5e;" title="Negative: {{ sentiment.negative }}"></div>
+                            {% else %}
+                                <div style="width: 100%; background: #334155; text-align: center; font-size: 12px; color: #94a3b8;">No data</div>
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 13px; min-width: 120px; text-align: right;">
+                            <span style="color: #10b981;">{{ sentiment.positive }}</span> / 
+                            <span style="color: #94a3b8;">{{ sentiment.neutral }}</span> / 
+                            <span style="color: #f43f5e;">{{ sentiment.negative }}</span>
+                        </div>
+                    </div>
+                </div>
                 <div style="margin-top: 20px; display: flex; gap: 10px;">
                     <form action="/switch_model" method="post" style="display: inline;">
                         <input type="hidden" name="tier" value="pro">
@@ -251,6 +271,22 @@ HTML_TEMPLATE = """
 </html>
 """
 
+def get_sentiment_stats():
+    sentiment_file = os.path.join(AGENT_ROOT, "sentiment_log.json")
+    stats = {"positive": 0, "negative": 0, "neutral": 0, "total": 0}
+    if os.path.exists(sentiment_file):
+        try:
+            with open(sentiment_file, "r") as f:
+                logs = json.load(f)
+                stats["total"] = len(logs)
+                for entry in logs:
+                    s = entry.get("sentiment", "neutral")
+                    if s in stats:
+                        stats[s] += 1
+        except Exception:
+            pass
+    return stats
+
 def get_usage_stats():
     # Helper to parse usage from moderator or file
     from file_tools.tools import get_usage
@@ -287,6 +323,7 @@ def index():
         with open(os.path.join(AGENT_ROOT, "active_model.txt"), "r") as f:
             active_model = f.read().strip().split("-")[1].upper() # Simplified name
             
+    sentiment = get_sentiment_stats()
     return render_template_string(HTML_TEMPLATE, 
                                 tasks=tasks, 
                                 pro_usage=pro, 
@@ -294,7 +331,8 @@ def index():
                                 cpu=cpu, 
                                 memory=mem, 
                                 chat_entries=chat_entries,
-                                active_model=active_model)
+                                active_model=active_model,
+                                sentiment=sentiment)
 
 @app.route("/switch_model", methods=["POST"])
 def switch_model_route():

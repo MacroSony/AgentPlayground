@@ -215,7 +215,20 @@ def _process_inbox(prompt):
         try:
             with open(inbox_path, "r") as f_in:
                 new_messages = f_in.read()
-                
+            
+            # Log interactions and analyze sentiment only for NEW messages
+            for line in new_messages.split("\n"):
+                if line.strip():
+                    if "LOCAL_USER: " in line:
+                        log_interaction("local", line.replace("LOCAL_USER: ", "").strip())
+                    elif "DISCORD_USER [" in line:
+                        import re
+                        match = re.search(r"DISCORD_USER \[(.*?)\]", line)
+                        if match:
+                            user = match.group(1)
+                            content = line.split("): ", 1)[-1] if "): " in line else line
+                            log_interaction(user, content)
+
             with open(processing_path, "a") as f_out:
                 f_out.write(new_messages)
             
@@ -231,19 +244,6 @@ def _process_inbox(prompt):
             print(f"AGENT: Error consolidating inbox: {e}")
 
     if inbox_content:
-        # Log interactions and analyze sentiment
-        for line in inbox_content.split("\n"):
-            if line.strip():
-                if "LOCAL_USER: " in line:
-                    log_interaction("local", line.replace("LOCAL_USER: ", "").strip())
-                elif "DISCORD_USER [" in line:
-                    import re
-                    match = re.search(r"DISCORD_USER \[(.*?)\]", line)
-                    if match:
-                        user = match.group(1)
-                        content = line.split("): ", 1)[-1] if "): " in line else line
-                        log_interaction(user, content)
-
         # Fetch relevant memory context and recent conversation history
         extra_context = ""
         try:
