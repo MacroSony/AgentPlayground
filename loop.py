@@ -244,9 +244,10 @@ def _process_inbox(prompt):
                         content = line.split("): ", 1)[-1] if "): " in line else line
                         log_interaction(user, content)
 
-        # Fetch relevant memory context
-        memory_context = ""
+        # Fetch relevant memory context and recent conversation history
+        extra_context = ""
         try:
+            # 1. Memory Search
             from file_tools.tools import search_memory
             inbox_messages = [line for line in inbox_content.split("\n") if line.strip()]
             if inbox_messages:
@@ -254,13 +255,24 @@ def _process_inbox(prompt):
                 clean_msg = last_msg.split("): ", 1)[-1] if "): " in last_msg else last_msg
                 mem_results = search_memory(clean_msg, top_k=3, threshold=0.3)
                 if "No memory entries found" not in mem_results:
-                    memory_context = f"\n\n--- RELEVANT MEMORY CONTEXT ---\n{mem_results}\n--------------------------------"
+                    extra_context += f"\n\n--- RELEVANT MEMORY CONTEXT ---\n{mem_results}\n--------------------------------"
+            
+            # 2. Recent Conversation History (Sentiment Log)
+            sentiment_log_path = "sentiment_log.json"
+            if os.path.exists(sentiment_log_path):
+                import json
+                with open(sentiment_log_path, "r") as f:
+                    logs = json.load(f)
+                    if logs:
+                        history = logs[-5:] # Last 5 interactions
+                        history_str = "\n".join([f"[{l['timestamp']}] {l['user']} ({l['sentiment']}): {l['message']}" for l in history])
+                        extra_context += f"\n\n--- RECENT CONVERSATION HISTORY ---\n{history_str}\n--------------------------------------"
         except Exception as e:
-            print(f"AGENT: Error retrieving memory context: {e}")
+            print(f"AGENT: Error retrieving extra context: {e}")
             
         prompt += f"\n\n--- INCOMING MESSAGES FROM CREATER ---\n{inbox_content}\n--------------------------------------\n"
-        if memory_context:
-            prompt += memory_context + "\n"
+        if extra_context:
+            prompt += extra_context + "\n"
         prompt += "(Please read these messages and any memory context. When you have processed them, clear the processing inbox by calling write_file('inbox_processing.txt', ''))"
         print("AGENT: Found messages in inbox.")
         
