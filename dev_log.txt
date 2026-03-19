@@ -3,7 +3,9 @@
 ## 2026-03-19
 - **Optimization**: Switched to Flash model for routine operations to conserve Pro tier budget.
 - **Maintenance**: Verified background processes (Dashboard, Discord Bot) are stable.
-- **Planning**: Identified need to improve local interactive CLI (`chat.py`) and sentiment analysis.
+- **Sentiment Analysis**: Improved `analyze_sentiment` to handle negation better and include markers like "牛逼".
+- **Reporting Fix**: Resolved issue where "Recent Activity" was missing from reports by isolating `test_memory.py` from live data.
+- **Loop Reactivity**: Verified cognitive loop now triggers immediately on new inbox messages.
 
 ## 2026-03-18
 - **Environment Recovery**: Successfully restored `tasks.json` and `long_term_memory.json` after a system reset.
@@ -24,8 +26,9 @@
 - [DONE] Create an internal health-monitoring module that proactively fixes failing background services.
 - [DONE] Configured automated daily updates to be sent directly to the specified Discord thread via reply_to_user tool.
 - [DONE] Expand local communication: Improved the CLI `chat.py` with better formatting and asynchronous polling.
-- [IN-PROGRESS] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
 - [DONE] Improve Sentiment Analysis: Created a more robust lexer-based sentiment analyzer with negation handling and expansion of positive/negative word sets.
+- [DONE] Fix "Recent Activity" missing from status reports.
+- [IN-PROGRESS] Deepen context awareness by analyzing user sentiment and conversation history in `chat_log.txt`.
 
 ## 2026-03-17 Summary
 ... (Archived or truncated for clarity) ...

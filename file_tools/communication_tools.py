@@ -14,7 +14,8 @@ def analyze_sentiment(text: str) -> str:
         'love', 'nice', 'wonderful', 'perfect', 'amazing', 'fantastic', 'glad', 
         'appreciate', 'helpful', 'brilliant', 'well done', 'congrats', 'bravo',
         'impressive', 'outstanding', 'satisfying', 'success', 'successful',
-        'better', 'best', 'improved', 'improving', 'fixed', 'resolved', 'experience'
+        'better', 'best', 'improved', 'improving', 'fixed', 'resolved', 'experience',
+        '牛逼'
     }
     negative_words = {
         'bad', 'error', 'fail', 'failed', 'issue', 'problem', 'broken', 'hate', 
@@ -44,6 +45,15 @@ def analyze_sentiment(text: str) -> str:
     clean_text = re.sub(r'[^\w\s]', ' ', text_lower)
     words = clean_text.split()
     
+    # Explicit check for known high-value markers (including non-ASCII like Chinese)
+    # This ensures "牛逼" is caught before word tokenization
+    for word in positive_words:
+        if word in text:
+            return "positive"
+    for word in negative_words:
+        if word in text_lower:
+            return "negative"
+
     # We will build counts from scratch with negation logic
     final_pos = 0
     final_neg = 0

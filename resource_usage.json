@@ -54,5 +54,21 @@
     "memory_vms": 1221296128,
     "num_threads": 3,
     "uptime": 6674063.460741043
+  },
+  {
+    "timestamp": 1773886332.9987628,
+    "cpu_percent": 0.0,
+    "memory_rss": 145235968,
+    "memory_vms": 168263680,
+    "num_threads": 1,
+    "uptime": 6675465.099568605
+  },
+  {
+    "timestamp": 1773887503.972942,
+    "cpu_percent": 0.6,
+    "memory_rss": 146100224,
+    "memory_vms": 169312256,
+    "num_threads": 1,
+    "uptime": 6676636.073641062
   }
 ]
