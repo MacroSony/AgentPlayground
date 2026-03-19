@@ -1,7 +1,10 @@
 import discord
+from discord import app_commands
 import os
 import asyncio
 import logging
+import time
+import json
 from file_tools.tools import read_file, write_file
 
 # Setup logging
@@ -11,10 +14,112 @@ logger = logging.getLogger('hoshi_bot')
 class HoshiBot(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.tree = app_commands.CommandTree(self)
         self.inbox_file = "inbox.txt"
 
+    async def setup_hook(self):
+        # Register commands
+        
+        @self.tree.command(name="status", description="Check if Hoshi is active")
+        async def status_cmd(interaction: discord.Interaction):
+            await interaction.response.send_message('Hoshi is active and monitoring.')
+
+        @self.tree.command(name="tasks", description="List current tasks")
+        async def tasks_cmd(interaction: discord.Interaction):
+            tasks_str = "No tasks found."
+            if os.path.exists("tasks.json"):
+                try:
+                    with open("tasks.json", "r") as f:
+                        tasks = json.load(f)
+                        if tasks:
+                            tasks_str = "\n".join([f"**[{t['status']}]** #{t['id']}: {t['description']}" for t in tasks])
+                except Exception:
+                    pass
+            await interaction.response.send_message(f"**Current Tasks:**\n{tasks_str}")
+
+        @self.tree.command(name="usage", description="Check API usage")
+        async def usage_cmd(interaction: discord.Interaction):
+            try:
+                from file_tools.tools import get_usage
+                usage = get_usage()
+                await interaction.response.send_message(f"**API Usage:**\n{usage}")
+            except Exception as e:
+                await interaction.response.send_message(f"Failed to get usage: {e}")
+
+        @self.tree.command(name="report", description="Get the latest full status report")
+        async def report_cmd(interaction: discord.Interaction):
+            try:
+                await interaction.response.defer()
+                from file_tools.reporting_tools import generate_status_report
+                report = generate_status_report()
+                if len(report) > 1900:
+                    await interaction.followup.send(f"```markdown\n{report[:1900]}\n```")
+                    for i in range(1900, len(report), 1900):
+                        await interaction.channel.send(f"```markdown\n{report[i:i+1900]}\n```")
+                else:
+                    await interaction.followup.send(f"```markdown\n{report}\n```")
+            except Exception as e:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(f"Failed to generate report: {e}")
+                else:
+                    await interaction.followup.send(f"Failed to generate report: {e}")
+
+        @self.tree.command(name="switch", description="Switch model tier and restart")
+        @app_commands.describe(tier="The model tier to switch to")
+        @app_commands.choices(tier=[
+            app_commands.Choice(name="Flash", value="flash"),
+            app_commands.Choice(name="Pro", value="pro")
+        ])
+        async def switch_cmd(interaction: discord.Interaction, tier: app_commands.Choice[str]):
+            try:
+                val = tier.value
+                model_name = "gemini-3-flash-preview" if val == 'flash' else "gemini-3.1-pro-preview"
+                with open("active_model.txt", "w") as f:
+                    f.write(model_name)
+                with open("restart_signal.txt", "w") as f:
+                    f.write(f"Model switch to {val} by Discord user {interaction.user}")
+                await interaction.response.send_message(f"🔄 Switching to **{val.upper()}** model. Restarting agent...")
+            except Exception as e:
+                await interaction.response.send_message(f"Failed to switch model: {e}")
+
+        @self.tree.command(name="restart", description="Restart the agent loop")
+        async def restart_cmd(interaction: discord.Interaction):
+            try:
+                with open("restart_signal.txt", "w") as f:
+                    f.write(f"Restart requested by Discord user {interaction.user}")
+                await interaction.response.send_message("🔄 Restarting agent...")
+            except Exception as e:
+                await interaction.response.send_message(f"Failed to trigger restart: {e}")
+
+        @self.tree.command(name="research", description="Perform a deep, multi-step research on a topic")
+        @app_commands.describe(topic="The research query")
+        async def research_cmd(interaction: discord.Interaction, topic: str):
+            await interaction.response.send_message(f"🔍 Starting deep research on: **{topic}**...\n- Status: Initializing...")
+            msg = await interaction.original_response()
+            
+            try:
+                from file_tools.research_tools import deep_search
+                await interaction.edit_original_response(content=f"🔍 Deep research: **{topic}**\n- Status: Searching the web...")
+                report = await asyncio.to_thread(deep_search, topic, max_depth=2, breadths=2)
+                await interaction.edit_original_response(content=f"🔍 Deep research: **{topic}**\n- Status: Complete! Summary sent below.")
+                
+                if len(report) > 1900:
+                    snippet = report[:1500] + "...\n\n(Full report attached below)"
+                    await interaction.followup.send(f"### Research Report: {topic}\n\n{snippet}")
+                    temp_filename = f"research_{int(time.time())}.md"
+                    with open(temp_filename, "w") as f:
+                        f.write(report)
+                    await interaction.followup.send(file=discord.File(temp_filename))
+                else:
+                    await interaction.followup.send(f"### Research Report: {topic}\n\n{report}")
+            except Exception as e:
+                logger.error(f"Deep search failed: {e}")
+                await interaction.edit_original_response(content=f"❌ Deep research: **{topic}**\n- Status: Failed\n- Error: {str(e)[:100]}")
+
+        self.loop.create_task(self.poll_outbox())
+        await self.tree.sync()
+
     async def poll_outbox(self):
-        import json
         last_pos = 0
         outbox_file = "discord_outbox.txt"
         if os.path.exists(outbox_file):
@@ -53,7 +158,6 @@ class HoshiBot(discord.Client):
     async def on_ready(self):
         logger.info(f'Logged in as {self.user} (ID: {self.user.id})')
         print(f'Logged in as {self.user} (ID: {self.user.id})')
-        self.loop.create_task(self.poll_outbox())
 
     async def on_message(self, message):
         # Don't respond to ourselves
@@ -72,122 +176,6 @@ class HoshiBot(discord.Client):
                  pass
         
         if not (is_mentioned or is_reply_to_me):
-            return
-
-        # Commands
-        if '!status' in message.content:
-            await message.channel.send('Hoshi is active and monitoring.')
-            return
-            
-        if '!tasks' in message.content:
-            import json
-            tasks_str = "No tasks found."
-            if os.path.exists("tasks.json"):
-                try:
-                    with open("tasks.json", "r") as f:
-                        tasks = json.load(f)
-                        if tasks:
-                            tasks_str = "\n".join([f"**[{t['status']}]** #{t['id']}: {t['description']}" for t in tasks])
-                except Exception:
-                    pass
-            await message.channel.send(f"**Current Tasks:**\n{tasks_str}")
-            return
-            
-        if '!help' in message.content:
-            help_text = (
-                "**Hoshi Bot Commands:**\n"
-                "`!status` - Check if Hoshi is active.\n"
-                "`!tasks` - List current tasks.\n"
-                "`!usage` - Check API usage.\n"
-                "`!report` - Get the latest full status report.\n"
-                "`!switch <flash|pro>` - Switch model tier and restart.\n"
-                "`!restart` - Restart the agent loop.\n"
-                "`!research <topic>` - Perform a deep, multi-step research on a topic.\n"
-                "`!help` - Show this message.\n"
-                "Mention me (@Hoshi) to send a message to my inbox for cognitive processing."
-            )
-            await message.channel.send(help_text)
-            return
-
-        if '!report' in message.content:
-            try:
-                from file_tools.reporting_tools import generate_status_report
-                report = generate_status_report()
-                for i in range(0, len(report), 1900):
-                    await message.channel.send(f"```markdown\n{report[i:i+1900]}\n```")
-            except Exception as e:
-                await message.channel.send(f"Failed to generate report: {e}")
-            return
-
-        if '!usage' in message.content:
-            try:
-                from file_tools.tools import get_usage
-                usage = get_usage()
-                await message.channel.send(f"**API Usage:**\n{usage}")
-            except Exception as e:
-                await message.channel.send(f"Failed to get usage: {e}")
-            return
-
-        if '!switch' in message.content:
-            tier = 'flash' if 'flash' in message.content.lower() else 'pro'
-            try:
-                model_name = "gemini-3-flash-preview" if tier == 'flash' else "gemini-3.1-pro-preview"
-                with open("active_model.txt", "w") as f:
-                    f.write(model_name)
-                with open("restart_signal.txt", "w") as f:
-                    f.write(f"Model switch to {tier} by Discord user {message.author}")
-                await message.channel.send(f"🔄 Switching to **{tier.upper()}** model. Restarting agent...")
-            except Exception as e:
-                await message.channel.send(f"Failed to switch model: {e}")
-            return
-
-        if '!restart' in message.content:
-            try:
-                with open("restart_signal.txt", "w") as f:
-                    f.write(f"Restart requested by Discord user {message.author}")
-                await message.channel.send("🔄 Restarting agent...")
-            except Exception as e:
-                await message.channel.send(f"Failed to trigger restart: {e}")
-            return
-
-        if '!research' in message.content or '!deep_search' in message.content:
-            cmd = '!research' if '!research' in message.content else '!deep_search'
-            query = message.content.replace(cmd, '').replace(f'<@{self.user.id}>', '').strip()
-            if not query:
-                await message.channel.send(f"Please provide a research query. Usage: `{cmd} <topic>`")
-                return
-            
-            # Initial feedback
-            msg = await message.channel.send(f"🔍 Starting deep research on: **{query}**...\n- Status: Initializing...")
-            
-            try:
-                async with message.channel.typing():
-                    from file_tools.research_tools import deep_search
-                    
-                    # Update status to searching
-                    await msg.edit(content=f"🔍 Deep research: **{query}**\n- Status: Searching the web...")
-                    
-                    # Run deep search in a thread to not block the bot
-                    report = await asyncio.to_thread(deep_search, query, max_depth=2, breadths=2)
-                    
-                    # Final feedback
-                    await msg.edit(content=f"🔍 Deep research: **{query}**\n- Status: Complete! Summary sent below.")
-                    
-                    if len(report) > 1900:
-                        # If long, create a snippet and a file
-                        snippet = report[:1500] + "...\n\n(Full report attached below)"
-                        await message.channel.send(f"### Research Report: {query}\n\n{snippet}")
-                        
-                        temp_filename = f"research_{int(time.time())}.md"
-                        with open(temp_filename, "w") as f:
-                            f.write(report)
-                        await message.channel.send(file=discord.File(temp_filename))
-                        # Cleanup file later or leave it if ephemeral
-                    else:
-                        await message.channel.send(f"### Research Report: {query}\n\n{report}")
-            except Exception as e:
-                logger.error(f"Deep search failed: {e}")
-                await msg.edit(content=f"❌ Deep research: **{query}**\n- Status: Failed\n- Error: {str(e)[:100]}")
             return
 
         # Log the message to inbox.txt for the cognitive loop to process
